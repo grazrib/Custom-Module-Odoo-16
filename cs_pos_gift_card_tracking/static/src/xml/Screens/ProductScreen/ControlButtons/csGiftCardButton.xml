@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="csGiftCardButton" owl="1">
+        <div class="control-button cs_gift_card">
+            <span>🎁</span>
+            <span>Carta Regalo</span>
+        </div>
+    </t>
+</templates>

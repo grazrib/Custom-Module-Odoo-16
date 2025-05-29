@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_inventory_adjustment_mobile_form" model="ir.ui.view">
+        <field name="name">inventory.adjustment.mobile.form</field>
+        <field name="model">inventory.adjustment</field>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <form string="RETTIFICA INVENTARIO" create="true" js_class="inventory_adjustment_mobile_form" edit="true" delete="false">
+                <style>
+                    .o_form_buttons_view, .o_form_buttons_edit {
+                        display: none !important;
+                    }
+                    .o_form_statusbar {
+                        display: none !important;
+                    }
+                    .o_pager {
+                        display: none !important;
+                    }
+                </style>
+                <field name="warehouse_id" invisible="1"/>
+                <field name="product_id" invisible="1"/>
+                <field name="barcode" invisible="1"/>
+                <div class="p-3 bg-primary text-center text-white">
+                    <field name="location_id" options="{'no_open': True, 'no_create': True}" readonly="1"/>
+                </div>
+                <div class="mt-3 px-3">
+                    <div class="input-group">
+                        <input type="text" id="search_input" class="form-control" placeholder="Cerca prodotto per nome o codice..."/>
+                        <div class="input-group-append">
+                            <button name="action_scan_barcode" type="object" class="btn btn-info btn-scan-barcode" icon="fa-barcode"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="product-details p-3" attrs="{'invisible': [('product_id', '=', False)]}">
+                    <div class="row">
+                        <div class="col-12 text-center mb-3">
+                            <div class="position-relative d-inline-block">
+                                <field name="product_image" widget="image" class="img-fluid rounded" options="{'preview_image': 'product_image', 'size': [300, 300]}"/>
+                                <button name="action_update_image" type="object" class="btn btn-sm btn-light position-absolute" style="top: 0; right: 0;" icon="fa-camera" title="Aggiorna immagine"/>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <field name="product_name" readonly="1" class="h4 mb-0"/>
+                                <button name="action_update_barcode" type="object" class="btn btn-sm btn-light" icon="fa-barcode" title="Aggiorna barcode"/>
+                            </div>
+                            <div class="text-muted">
+                                <field name="barcode" readonly="1"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-6 text-center">
+                            <label for="purchase_price" class="h5">Prezzo di Acquisto</label>
+                            <field name="purchase_price" widget="monetary" readonly="1" class="h4 text-center"/>
+                        </div>
+                        <div class="col-6 text-center">
+                            <label for="sale_price" class="h5">Prezzo di Vendita</label>
+                            <field name="sale_price" widget="monetary" readonly="1" class="h4 text-center"/>
+                        </div>
+                    </div>
+                    <div class="row mt-4 justify-content-center text-center">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <label for="quantity" class="h5 mb-0">Quantità</label>
+                                <button name="refresh_quantity" type="object" class="btn btn-sm btn-info" icon="fa-refresh" title="Aggiorna quantità"/>
+                            </div>
+                        </div>
+                        <div class="col-12 d-flex justify-content-center align-items-center my-3">
+                            <button name="decrease_quantity" type="object" class="btn btn-primary btn-lg rounded-circle mx-3" style="width: 60px; height: 60px; font-size: 24px;" icon="fa-minus"/>
+                            <div class="mx-4 quantity-editable" data-field="quantity">
+                                <field name="quantity" class="h1 text-center" style="min-width: 80px; font-size: 36px;"/>
+                            </div>
+                            <button name="increase_quantity" type="object" class="btn btn-primary btn-lg rounded-circle mx-3" style="width: 60px; height: 60px; font-size: 24px;" icon="fa-plus"/>
+                        </div>
+                    </div>
+                    <div class="row mt-4 mb-4">
+                        <div class="col-12 text-center">
+                            <button name="confirm_adjustment" type="object" string="CONFERMA RETTIFICA" class="btn btn-success btn-lg py-3 px-5" style="font-size: 20px; font-weight: bold;"/>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_inventory_adjustment_mobile" model="ir.actions.act_window">
+        <field name="name">RETTIFICA INVENTARIO</field>
+        <field name="res_model">inventory.adjustment</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_inventory_adjustment_mobile_form"/>
+        <field name="target">current</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Cerca un prodotto per iniziare
+            </p>
+            <p>
+                Questa interfaccia ti permette di effettuare
+                rettifiche di inventario in modo semplice e veloce.
+            </p>
+        </field>
+    </record>
+</odoo>

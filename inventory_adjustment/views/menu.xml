@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_inventory_adjustment_root"
+        name="Rettifica Inventario"
+        web_icon="inventory_adjustment,static/description/icon.png"
+        sequence="100"/>
+
+    <menuitem id="menu_inventory_adjustment"
+        name="Rettifica"
+        parent="menu_inventory_adjustment_root"
+        action="action_inventory_adjustment_mobile"
+        sequence="10"/>
+
+    <menuitem id="menu_inventory_adjustment_configuration"
+        name="Impostazioni"
+        parent="menu_inventory_adjustment_root"
+        action="action_inventory_adjustment_configuration"
+        sequence="100"/>
+</odoo>

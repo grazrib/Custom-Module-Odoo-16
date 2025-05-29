@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_fatturazione_carta_buono_user,fatturazione.carta.buono.user,model_fatturazione_carta_buono,account.group_account_user,1,1,1,0
+access_fatturazione_carta_buono_manager,fatturazione.carta.buono.manager,model_fatturazione_carta_buono,account.group_account_manager,1,1,1,1

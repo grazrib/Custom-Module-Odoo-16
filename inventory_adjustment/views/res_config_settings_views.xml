@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.inventory.adjustment</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="90"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('settings')]" position="inside">
+                <div class="app_settings_block" data-string="Rettifica Inventario" string="Rettifica Inventario" data-key="inventory_adjustment">
+                    <h2>Impostazioni Rettifica Inventario</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <span class="o_form_label">Magazzino Predefinito</span>
+                                <div class="text-muted">
+                                    Seleziona il magazzino predefinito per le rettifiche di inventario
+                                </div>
+                                <div class="content-group">
+                                    <div class="mt16">
+                                        <field name="inventory_warehouse_id" options="{'no_create': True}" class="o_light_label"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_inventory_adjustment_configuration" model="ir.actions.act_window">
+        <field name="name">Impostazioni</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+        <field name="context">{'module' : 'inventory_adjustment'}</field>
+    </record>
+</odoo>

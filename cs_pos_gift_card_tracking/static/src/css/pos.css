@@ -1,0 +1,16 @@
+.popup.popup-text.popup-lg.product-configurator-popup.gift_card_popup {
+    width: 40% !important;
+}
+#textarea_gift_card {
+    height: 104px;
+}
+.main-body.touch-scrollable.scrollable-y.note_body {
+    padding: 10px;
+}
+.control-button.cs_gift_card {
+    background-color: #28a745;
+    color: white;
+}
+.control-button.cs_gift_card:hover {
+    background-color: #218838;
+}

@@ -1,0 +1,119 @@
+.inventory-adjustment-mobile {
+    background-color: #f8f9fa;
+    min-height: 100vh;
+}
+
+.inventory-adjustment-mobile .o_field_widget {
+    margin-bottom: 0;
+}
+
+.inventory-adjustment-mobile #search_input {
+    font-size: 16px;
+    border-radius: 4px;
+}
+
+.inventory-adjustment-mobile .product-details {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.inventory-adjustment-mobile button[name="increase_quantity"],
+.inventory-adjustment-mobile button[name="decrease_quantity"] {
+    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+}
+
+.inventory-adjustment-mobile .quantity-editable {
+    cursor: pointer;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 5px 10px;
+    min-width: 120px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.inventory-adjustment-mobile .search-result-item {
+    transition: background-color 0.2s;
+}
+
+.inventory-adjustment-mobile .search-result-item:hover {
+    background-color: #f8f9fa;
+}
+
+.inventory-adjustment-mobile button[name="confirm_adjustment"] {
+    box-shadow: 0 4px 6px rgba(40, 167, 69, 0.2);
+    border-radius: 30px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.inventory-adjustment-mobile button[name="confirm_adjustment"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(40, 167, 69, 0.3);
+}
+
+/* Nascondi pulsanti per la vista inventario */
+.inventory-adjustment-mobile .o_control_panel,
+.inventory-adjustment-mobile .o_form_buttons_edit,
+.inventory-adjustment-mobile .o_form_buttons_view,
+.inventory-adjustment-mobile .o_form_statusbar,
+.inventory-adjustment-mobile .o_pager {
+    display: none !important;
+}
+
+/* Formattazione numeri */
+.inventory-adjustment-mobile .o_field_monetary,
+.inventory-adjustment-mobile .o_field_float {
+    font-family: 'Roboto', sans-serif;
+    font-weight: 500;
+}
+
+.inventory-adjustment-mobile .text-primary {
+    font-weight: 600;
+}
+
+/* Miglioramenti per i prodotti recenti */
+.recent-products {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.recent-products .list-group-item {
+    transition: background-color 0.2s;
+    border-left: none;
+    border-right: none;
+}
+
+.recent-products .list-group-item:first-child {
+    border-top: none;
+}
+
+.recent-products .list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+@media (max-width: 767.98px) {
+    .inventory-adjustment-mobile .product-details {
+        margin: 0 -15px;
+        border-radius: 0;
+    }
+}
+
+button:focus,
+input:focus {
+    outline: 2px solid #0088ff !important;
+    outline-offset: 2px;
+}
+
+/* Stili per il campo quantità */
+.quantity-editable .o_field_float {
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+/* Formattazione prezzi */
+.text-primary {
+    color: #28a745 !important;
+}

@@ -1,0 +1,209 @@
+.barcode_scanner_dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    z-index: 1050;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    will-change: opacity;
+}
+
+.barcode_scanner_container {
+    width: 100%;
+    max-width: 600px;
+    background-color: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.barcode_scanner_header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.barcode_scanner_header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.barcode_scanner_close {
+    cursor: pointer;
+    font-size: 22px;
+    color: #6c757d;
+}
+
+.barcode_scanner_video {
+    width: 100%;
+    height: 300px;
+    background-color: #000;
+    overflow: hidden;
+    position: relative;
+}
+
+.barcode_scanner_video video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.barcode_scanner_target {
+    width: 70%;
+    height: 40%;
+    border: 2px solid #fff;
+    border-radius: 10px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.barcode_scanner_target::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: rgba(76, 175, 80, 0.8);
+    animation: scan 2s infinite;
+}
+
+.scanning-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: rgba(76, 175, 80, 0.8);
+    animation: scan 2s infinite;
+}
+
+@keyframes scan {
+    0% { top: 0; }
+    50% { top: 100%; }
+    100% { top: 0; }
+}
+
+.barcode_scanner_message {
+    padding: 15px;
+    text-align: center;
+    font-size: 14px;
+    color: #6c757d;
+}
+
+.barcode_scanner_controls {
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+}
+
+@media (max-width: 576px) {
+    .barcode_scanner_container {
+        width: 100%;
+        height: 100%;
+        max-width: none;
+        border-radius: 0;
+    }
+    
+    .barcode_scanner_video {
+        height: 60vh;
+    }
+}
+
+.barcode_scanner_close:hover,
+.barcode_scanner_cancel:hover {
+    opacity: 0.8;
+}
+
+.scanning {
+    position: relative;
+}
+
+.scanning::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(to right, transparent, #28a745, transparent);
+    animation: scanning 1.5s infinite;
+}
+
+@keyframes scanning {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* Stili specifici per Quagga */
+canvas.drawingBuffer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+#interactive.viewport {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+/* Migliorie per una migliore esperienza utente */
+.o_barcode_scanner_start:focus,
+.o_barcode_scanner_cancel:focus {
+    outline: none;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.o_barcode_scanner_notification {
+    transition: all 0.3s ease;
+}
+
+/* Indicatore di scansione in corso */
+.scanning-active .barcode_scanner_target {
+    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.3);
+}
+
+/* Feedback visivo per scansione riuscita */
+.scan-success .barcode_scanner_target {
+    border-color: #28a745;
+    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.5);
+}
+
+/* Pulsante per cambiare fotocamera (frontale/posteriore) */
+.o_barcode_scanner_switch_camera {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    width: 40px;
+    height: 40px;
+    background-color: rgba(255, 255, 255, 0.7);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    color: #343a40;
+    z-index: 10;
+    transition: background-color 0.2s;
+}
+
+.o_barcode_scanner_switch_camera:hover {
+    background-color: rgba(255, 255, 255, 0.9);
+}

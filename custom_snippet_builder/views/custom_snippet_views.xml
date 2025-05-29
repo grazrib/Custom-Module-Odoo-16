@@ -1,0 +1,47 @@
+<odoo>
+  <record id="view_custom_snippet_form" model="ir.ui.view">
+    <field name="name">custom.snippet.form</field>
+    <field name="model">custom.snippet</field>
+    <field name="arch" type="xml">
+      <form string="Custom Snippet">
+        <sheet>
+          <group>
+            <field name="name"/>
+            <notebook>
+              <page string="HTML">
+                <field name="html_code" widget="html"/>
+              </page>
+              <page string="CSS">
+                <field name="css_code" widget="text"/>
+              </page>
+              <page string="JS">
+                <field name="js_code" widget="text"/>
+              </page>
+            </notebook>
+            <field name="active"/>
+          </group>
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <record id="view_custom_snippet_tree" model="ir.ui.view">
+    <field name="name">custom.snippet.tree</field>
+    <field name="model">custom.snippet</field>
+    <field name="arch" type="xml">
+      <tree>
+        <field name="name"/>
+        <field name="active"/>
+      </tree>
+    </field>
+  </record>
+
+  <record id="action_custom_snippet" model="ir.actions.act_window">
+    <field name="name">Custom Snippets</field>
+    <field name="res_model">custom.snippet</field>
+    <field name="view_mode">tree,form</field>
+  </record>
+
+  <menuitem id="menu_custom_snippet_root" name="Snippet Builder" sequence="10"/>
+  <menuitem id="menu_custom_snippet" name="Custom Snippets" parent="menu_custom_snippet_root" action="action_custom_snippet"/>
+</odoo>

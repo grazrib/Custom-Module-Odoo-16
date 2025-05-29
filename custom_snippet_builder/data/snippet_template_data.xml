@@ -1,0 +1,26 @@
+<odoo>
+  <record id="snippet_template_example" model="custom.snippet">
+    <field name="name">Example Widget</field>
+    <field name="html_code">
+      <![CDATA[
+        <div class="example-snippet" data-snippet-js="console.log('Example widget loaded!');">
+            <h2>My Custom Snippet</h2>
+        </div>
+      ]]>
+    </field>
+    <field name="css_code">
+      <![CDATA[
+        .example-snippet {
+            background: #f2f2f2;
+            padding: 20px;
+        }
+      ]]>
+    </field>
+    <field name="js_code">
+      <![CDATA[
+        console.log('This is custom JS running on every page.');
+      ]]>
+    </field>
+    <field name="active">True</field>
+  </record>
+</odoo>

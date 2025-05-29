@@ -1,0 +1,14 @@
+<odoo>
+  <template id="custom_snippet_includer" inherit_id="website.layout">
+    <xpath expr="head" position="inside">
+      <t t-foreach="request.env['custom.snippet'].sudo().search([('active', '=', True)])" t-as="snippet">
+        <style type="text/css" t-raw="snippet.css_code"/>
+      </t>
+    </xpath>
+    <xpath expr="//body" position="inside">
+      <t t-foreach="request.env['custom.snippet'].sudo().search([('active', '=', True)])" t-as="snippet">
+        <div t-raw="snippet.html_code"/>
+      </t>
+    </xpath>
+  </template>
+</odoo>
