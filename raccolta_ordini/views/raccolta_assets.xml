@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================================= -->
+    <!-- ASSETS COMUNI                     -->
+    <!-- ================================= -->
+
+    <template id="assets_common" name="Raccolta Ordini: Assets Comuni">
+        <!-- CSS Core -->
+        <link rel="stylesheet" type="text/css" href="/raccolta_ordini/static/src/css/raccolta.css"/>
+        <link rel="stylesheet" type="text/css" href="/raccolta_ordini/static/src/css/receipt.css"/>
+        <link rel="stylesheet" type="text/css" href="/raccolta_ordini/static/src/css/mobile.css"/>
+
+        <!-- Librerie esterne -->
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/1.5.3/signature_pad.min.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/dexie/3.2.4/dexie.min.js"></script>
+    </template>
+
+    <!-- ================================= -->
+    <!-- ASSETS PRINCIPALI APPLICAZIONE    -->
+    <!-- ================================= -->
+
+    <template id="assets" name="Raccolta Ordini: Assets Principali">
+        <!-- Include assets comuni -->
+        <t t-call="raccolta_ordini.assets_common"/>
+
+        <!-- JavaScript Core -->
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/main.js"></script>
+
+        <!-- JavaScript Models -->
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/models/offline_storage.js"></script>
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/models/counter_manager.js"></script>
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/models/sync_manager.js"></script>
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/models/document_creator.js"></script>
+
+        <!-- JavaScript Screens -->
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/screens/dashboard.js"></script>
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/screens/order_screen.js"></script>
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/screens/client_screen.js"></script>
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/screens/product_screen.js"></script>
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/screens/sync_screen.js"></script>
+
+        <!-- JavaScript Receipt System -->
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/receipt/receipt_manager.js"></script>
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/receipt/escpos_generator.js"></script>
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/receipt/pdf_generator.js"></script>
+
+        <!-- JavaScript Widgets -->
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/widgets/barcode_scanner.js"></script>
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/widgets/signature_pad.js"></script>
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/widgets/client_selector.js"></script>
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/widgets/product_list.js"></script>
+
+        <!-- JavaScript Utils -->
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/utils/network_detector.js"></script>
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/utils/notification.js"></script>
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/utils/helpers.js"></script>
+    </template>
+
+    <!-- ================================= -->
+    <!-- ASSETS BACKEND INTEGRATION        -->
+    <!-- ================================= -->
+
+    <template id="assets_backend" name="Raccolta Ordini: Backend Integration">
+        <!-- JavaScript Backend -->
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/backend/raccolta_integration.js"></script>
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/backend/sync_monitor.js"></script>
+
+        <!-- CSS Backend -->
+        <link rel="stylesheet" type="text/css" href="/raccolta_ordini/static/src/css/backend.css"/>
+    </template>
+
+    <!-- ================================= -->
+    <!-- ASSETS MOBILE SPECIFICI           -->
+    <!-- ================================= -->
+
+    <template id="assets_mobile" name="Raccolta Ordini: Mobile Assets">
+        <!-- CSS Mobile Enhanced -->
+        <link rel="stylesheet" type="text/css" href="/raccolta_ordini/static/src/css/mobile_enhanced.css"/>
+
+        <!-- JavaScript Mobile -->
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/mobile/touch_handler.js"></script>
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/mobile/camera_scanner.js"></script>
+
+        <!-- Viewport mobile -->
+        <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+        <meta name="apple-mobile-web-app-capable" content="yes"/>
+        <meta name="mobile-web-app-capable" content="yes"/>
+    </template>
+
+    <!-- ================================= -->
+    <!-- ASSETS STAMPA                     -->
+    <!-- ================================= -->
+
+    <template id="assets_print" name="Raccolta Ordini: Print Assets">
+        <!-- CSS per stampa -->
+        <link rel="stylesheet" type="text/css" href="/raccolta_ordini/static/src/css/print.css"/>
+
+        <!-- JavaScript stampa -->
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/print/print_manager.js"></script>
+    </template>
+
+    <!-- ================================= -->
+    <!-- ASSETS QUNIT TESTS                -->
+    <!-- ================================= -->
+
+    <template id="assets_tests" name="Raccolta Ordini: Test Assets">
+        <!-- Include assets principali -->
+        <t t-call="raccolta_ordini.assets"/>
+
+        <!-- QUnit Tests -->
+        <script type="text/javascript" src="/raccolta_ordini/static/tests/js/test_offline_storage.js"></script>
+        <script type="text/javascript" src="/raccolta_ordini/static/tests/js/test_counter_manager.js"></script>
+        <script type="text/javascript" src="/raccolta_ordini/static/tests/js/test_sync_manager.js"></script>
+        <script type="text/javascript" src="/raccolta_ordini/static/tests/js/test_document_creator.js"></script>
+    </template>
+
+    <!-- ================================= -->
+    <!-- MANIFEST PWA                      -->
+    <!-- ================================= -->
+
+    <template id="pwa_manifest" name="PWA Manifest">
+        <link rel="manifest" href="/raccolta_ordini/static/manifest.json"/>
+
+        <!-- Icons -->
+        <link rel="icon" type="image/png" sizes="192x192" href="/raccolta_ordini/static/src/img/icon-192.png"/>
+        <link rel="icon" type="image/png" sizes="512x512" href="/raccolta_ordini/static/src/img/icon-512.png"/>
+        <link rel="apple-touch-icon" href="/raccolta_ordini/static/src/img/icon-192.png"/>
+
+        <!-- Theme colors -->
+        <meta name="theme-color" content="#2c5282"/>
+        <meta name="msapplication-TileColor" content="#2c5282"/>
+    </template>
+
+    <!-- ================================= -->
+    <!-- SERVICE WORKER                    -->
+    <!-- ================================= -->
+
+    <template id="service_worker_registration" name="Service Worker Registration">
+        <script type="text/javascript">
+            // Registrazione Service Worker per funzionalità offline
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                    navigator.serviceWorker.register('/raccolta_ordini/static/src/js/service-worker.js')
+                        .then(function(registration) {
+                            console.log('SW registered: ', registration);
+                        })
+                        .catch(function(registrationError) {
+                            console.log('SW registration failed: ', registrationError);
+                        });
+                });
+            }
+        </script>
+    </template>
+
+    <!-- ================================= -->
+    <!-- ASSETS CONDIZIONALI               -->
+    <!-- ================================= -->
+
+    <!-- Assets per modalità debug -->
+    <template id="assets_debug" name="Raccolta Ordini: Debug Assets">
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/debug/debug_panel.js"></script>
+        <link rel="stylesheet" type="text/css" href="/raccolta_ordini/static/src/css/debug.css"/>
+    </template>
+
+    <!-- Assets per sviluppo -->
+    <template id="assets_development" name="Raccolta Ordini: Development Assets">
+        <!-- Source maps e tools di sviluppo -->
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/dev/dev_tools.js"></script>
+    </template>
+
+    <!-- ================================= -->
+    <!-- BUNDLE ASSETS PER PAGINE          -->
+    <!-- ================================= -->
+
+    <!-- Bundle per pagina principale raccolta -->
+    <template id="bundle_main_app" name="Bundle: Main App">
+        <t t-call="raccolta_ordini.assets"/>
+        <t t-call="raccolta_ordini.pwa_manifest"/>
+        <t t-call="raccolta_ordini.service_worker_registration"/>
+
+        <!-- Include mobile assets se su dispositivo mobile -->
+        <t t-if="request.httprequest.user_agent and ('Mobile' in request.httprequest.user_agent or 'Android' in request.httprequest.user_agent)">
+            <t t-call="raccolta_ordini.assets_mobile"/>
+        </t>
+
+        <!-- Include debug assets se in modalità debug -->
+        <t t-if="debug">
+            <t t-call="raccolta_ordini.assets_debug"/>
+        </t>
+    </template>
+
+    <!-- Bundle per pagine di configurazione backend -->
+    <template id="bundle_backend_config" name="Bundle: Backend Config">
+        <t t-call="raccolta_ordini.assets_backend"/>
+    </template>
+
+    <!-- Bundle per portal clienti -->
+    <template id="bundle_portal" name="Bundle: Portal">
+        <link rel="stylesheet" type="text/css" href="/raccolta_ordini/static/src/css/portal.css"/>
+        <script type="text/javascript" src="/raccolta_ordini/static/src/js/portal/portal_orders.js"></script>
+    </template>
+
+    <!-- Bundle per stampa ricevute -->
+    <template id="bundle_print" name="Bundle: Print">
+        <t t-call="raccolta_ordini.assets_print"/>
+    </template>
+
+    <!-- ================================= -->
+    <!-- PRELOAD RESOURCES                 -->
+    <!-- ================================= -->
+
+    <template id="preload_resources" name="Preload Resources">
+        <!-- Preload CSS critici -->
+        <link rel="preload" href="/raccolta_ordini/static/src/css/raccolta.css" as="style"/>
+
+        <!-- Preload JavaScript core -->
+        <link rel="preload" href="/raccolta_ordini/static/src/js/main.js" as="script"/>
+
+        <!-- Preload font icons -->
+        <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin/>
+    </template>
+
+    <!-- ================================= -->
+    <!-- LAZY LOAD RESOURCES               -->
+    <!-- ================================= -->
+
+    <template id="lazy_load_resources" name="Lazy Load Resources">
+        <script type="text/javascript">
+            // Caricamento lazy di componenti non critici
+            document.addEventListener('DOMContentLoaded', function() {
+                // Carica barcode scanner solo se necessario
+                if (document.querySelector('[data-barcode-scanner]')) {
+                    import('/raccolta_ordini/static/src/js/widgets/barcode_scanner.js');
+                }
+
+                // Carica signature pad solo se necessario
+                if (document.querySelector('[data-signature-pad]')) {
+                    import('/raccolta_ordini/static/src/js/widgets/signature_pad.js');
+                }
+            });
+        </script>
+    </template>
+
+</odoo>

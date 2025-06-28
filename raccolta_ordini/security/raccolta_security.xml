@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- ================================= -->
+        <!-- CATEGORIE DI ACCESSO             -->
+        <!-- ================================= -->
+
+        <record id="category_raccolta_ordini" model="ir.module.category">
+            <field name="name">Raccolta Ordini</field>
+            <field name="description">Gestione raccolta ordini offline</field>
+            <field name="sequence">50</field>
+        </record>
+
+        <!-- ================================= -->
+        <!-- GRUPPI DI SICUREZZA               -->
+        <!-- ================================= -->
+
+        <!-- Gruppo base: Agente Raccolta Ordini -->
+        <record id="group_raccolta_agent" model="res.groups">
+            <field name="name">Agente Raccolta Ordini</field>
+            <field name="category_id" ref="category_raccolta_ordini"/>
+            <field name="comment">Può utilizzare l'app raccolta ordini offline, creare ordini, stampare ricevute</field>
+        </record>
+
+        <!-- Gruppo intermedio: Supervisore -->
+        <record id="group_raccolta_supervisor" model="res.groups">
+            <field name="name">Supervisore Raccolta Ordini</field>
+            <field name="category_id" ref="category_raccolta_ordini"/>
+            <field name="implied_ids" eval="[(4, ref('group_raccolta_agent'))]"/>
+            <field name="comment">Può gestire sessioni di altri agenti, vedere report di performance</field>
+        </record>
+
+        <!-- Gruppo avanzato: Manager -->
+        <record id="group_raccolta_manager" model="res.groups">
+            <field name="name">Manager Raccolta Ordini</field>
+            <field name="category_id" ref="category_raccolta_ordini"/>
+            <field name="implied_ids" eval="[(4, ref('group_raccolta_supervisor'))]"/>
+            <field name="comment">Può configurare il sistema, gestire agenti, accedere a tutti i report</field>
+        </record>
+
+        <!-- Gruppo amministratore: Amministratore Sistema -->
+        <record id="group_raccolta_admin" model="res.groups">
+            <field name="name">Amministratore Raccolta Ordini</field>
+            <field name="category_id" ref="category_raccolta_ordini"/>
+            <field name="implied_ids" eval="[(4, ref('group_raccolta_manager'))]"/>
+            <field name="comment">Accesso completo al sistema, può modificare configurazioni avanzate</field>
+        </record>
+
+        <!-- ================================= -->
+        <!-- REGOLE DI ACCESSO AI RECORD      -->
+        <!-- ================================= -->
+
+        <!-- Rule: Agenti possono vedere solo le proprie sessioni -->
+        <record id="rule_session_agent_own" model="ir.rule">
+            <field name="name">Agenti: Solo Proprie Sessioni</field>
+            <field name="model_id" ref="model_raccolta_session"/>
+            <field name="domain_force">[('user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_raccolta_agent'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Rule: Supervisori possono vedere sessioni del proprio team -->
+        <record id="rule_session_supervisor_team" model="ir.rule">
+            <field name="name">Supervisori: Sessioni Team</field>
+            <field name="model_id" ref="model_raccolta_session"/>
+            <field name="domain_force">['|', ('user_id', '=', user.id), ('user_id.parent_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_raccolta_supervisor'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Rule: Manager possono vedere tutte le sessioni dell'azienda -->
+        <record id="rule_session_manager_company" model="ir.rule">
+            <field name="name">Manager: Tutte Sessioni Azienda</field>
+            <field name="model_id" ref="model_raccolta_session"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('group_raccolta_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- Rule: Agenti possono vedere solo i propri ordini raccolta -->
+        <record id="rule_order_agent_own" model="ir.rule">
+            <field name="name">Agenti: Solo Propri Ordini</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
+            <field name="domain_force">['|', ('raccolta_session_id', '=', False), ('raccolta_session_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_raccolta_agent'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Rule: Supervisori possono vedere ordini del team -->
+        <record id="rule_order_supervisor_team" model="ir.rule">
+            <field name="name">Supervisori: Ordini Team</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
+            <field name="domain_force">['|', '|',
+                ('raccolta_session_id', '=', False),
+                ('raccolta_session_id.user_id', '=', user.id),
+                ('raccolta_session_id.user_id.parent_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_raccolta_supervisor'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Rule: Configurazioni accessibili in base ai diritti -->
+        <record id="rule_config_access" model="ir.rule">
+            <field name="name">Configurazioni: Accesso Basato su Gruppo</field>
+            <field name="model_id" ref="model_raccolta_config"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('group_raccolta_agent'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Rule: Manager possono modificare configurazioni -->
+        <record id="rule_config_manager" model="ir.rule">
+            <field name="name">Manager: Modifica Configurazioni</field>
+            <field name="model_id" ref="model_raccolta_config"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('group_raccolta_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- ================================= -->
+        <!-- PRIVILEGI SPECIALI                -->
+        <!-- ================================= -->
+
+        <!-- Rule: Accesso lettura a partner per agenti -->
+        <record id="rule_partner_agent_read" model="ir.rule">
+            <field name="name">Agenti: Lettura Clienti</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="domain_force">[('customer_rank', '>', 0)]</field>
+            <field name="groups" eval="[(4, ref('group_raccolta_agent'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Rule: Accesso lettura a prodotti per agenti -->
+        <record id="rule_product_agent_read" model="ir.rule">
+            <field name="name">Agenti: Lettura Prodotti</field>
+            <field name="model_id" ref="product.model_product_product"/>
+            <field name="domain_force">[('sale_ok', '=', True)]</field>
+            <field name="groups" eval="[(4, ref('group_raccolta_agent'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- ================================= -->
+        <!-- IMPOSTAZIONI UTENTE AGENTE       -->
+        <!-- ================================= -->
+
+        <!-- Assegna automaticamente gruppo base agli agenti -->
+        <function model="res.users" name="write">
+            <value eval="[('is_raccolta_agent', '=', True)]"/>
+            <value eval="{'groups_id': [(4, ref('group_raccolta_agent'))]}"/>
+        </function>
+
+        <!-- ================================= -->
+        <!-- SICUREZZA SESSIONI WEB           -->
+        <!-- ================================= -->
+
+        <!-- Permessi per controllers web -->
+        <record id="access_raccolta_controllers" model="ir.rule">
+            <field name="name">Controller: Accesso Web Agenti</field>
+            <field name="model_id" ref="base.model_res_users"/>
+            <field name="domain_force">[('is_raccolta_agent', '=', True)]</field>
+            <field name="groups" eval="[(4, ref('group_raccolta_agent'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- ================================= -->
+        <!-- IMPOSTAZIONI PORTAL              -->
+        <!-- ================================= -->
+
+        <!-- Rule: Clienti portal possono vedere i propri ordini raccolta -->
+        <record id="rule_order_portal_own" model="ir.rule">
+            <field name="name">Portal: Propri Ordini Raccolta</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
+            <field name="domain_force">[
+                ('raccolta_session_id', '!=', False),
+                ('partner_id', '=', user.partner_id.id)
+            ]</field>
+            <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- ================================= -->
+        <!-- SICUREZZA DOCUMENTI COLLEGATI    -->
+        <!-- ================================= -->
+
+        <!-- Rule: Accesso picking collegati agli ordini raccolta -->
+        <record id="rule_picking_raccolta" model="ir.rule">
+            <field name="name">Picking: Collegati a Ordini Raccolta</field>
+            <field name="model_id" ref="stock.model_stock_picking"/>
+            <field name="domain_force">['|',
+                ('sale_id.raccolta_session_id', '=', False),
+                ('sale_id.raccolta_session_id.user_id', '=', user.id)
+            ]</field>
+            <field name="groups" eval="[(4, ref('group_raccolta_agent'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Rule: Accesso DDT collegati agli ordini raccolta -->
+        <record id="rule_ddt_raccolta" model="ir.rule">
+            <field name="name">DDT: Collegati a Ordini Raccolta</field>
+            <field name="model_id" ref="l10n_it_delivery_note.model_stock_delivery_note"/>
+            <field name="domain_force">['|',
+                ('sale_id.raccolta_session_id', '=', False),
+                ('sale_id.raccolta_session_id.user_id', '=', user.id)
+            ]</field>
+            <field name="groups" eval="[(4, ref('group_raccolta_agent'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- ================================= -->
+        <!-- LIMITAZIONI SPECIALI              -->
+        <!-- ================================= -->
+
+        <!-- Agenti non possono cancellare ordini sincronizzati -->
+        <record id="rule_no_delete_synced_orders" model="ir.rule">
+            <field name="name">Protezione: No Cancellazione Ordini Sincronizzati</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
+            <field name="domain_force">[
+                '|',
+                ('raccolta_session_id', '=', False),
+                ('synced_to_odoo', '=', False)
+            ]</field>
+            <field name="groups" eval="[(4, ref('group_raccolta_agent'))]"/>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- ================================= -->
+        <!-- RECORD RULES PER COMPANY         -->
+        <!-- ================================= -->
+
+        <!-- Tutte le entità raccolta ordini sono multi-company -->
+        <record id="rule_raccolta_config_company" model="ir.rule">
+            <field name="name">Configurazioni: Multi-Company</field>
+            <field name="model_id" ref="model_raccolta_config"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_raccolta_session_company" model="ir.rule">
+            <field name="name">Sessioni: Multi-Company</field>
+            <field name="model_id" ref="model_raccolta_session"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+    </data>
+</odoo>

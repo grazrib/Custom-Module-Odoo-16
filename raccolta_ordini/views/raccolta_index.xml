@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================================= -->
+    <!-- TEMPLATE PRINCIPALE APPLICAZIONE  -->
+    <!-- ================================= -->
+
+    <template id="index" name="Raccolta Ordini - Applicazione Principale">
+        <t t-call="web.layout">
+            <t t-set="head">
+                <!-- Meta tags per PWA -->
+                <meta charset="utf-8"/>
+                <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+                <meta name="mobile-web-app-capable" content="yes"/>
+                <meta name="apple-mobile-web-app-capable" content="yes"/>
+                <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+
+                <!-- Titolo dinamico -->
+                <title>Raccolta Ordini - <t t-esc="session_info.get('config_name', 'Offline')"/></title>
+
+                <!-- Preload resources -->
+                <t t-call="raccolta_ordini.preload_resources"/>
+
+                <!-- Assets principali -->
+                <t t-call="raccolta_ordini.bundle_main_app"/>
+
+                <!-- Dati iniziali per JavaScript -->
+                <script type="text/javascript">
+                    window.raccoltaApp = {
+                        sessionInfo: <t t-raw="session_info"/>,
+                        offlineData: <t t-raw="offline_data"/>,
+                        configId: <t t-esc="config_id"/>,
+                        sessionId: <t t-esc="session_id"/>,
+                        debug: <t t-esc="debug and 'true' or 'false'"/>,
+                        csrfToken: '<t t-esc="request.csrf_token()"/>',
+                        baseUrl: '<t t-esc="request.httprequest.url_root"/>',
+                        userId: <t t-esc="request.env.user.id"/>,
+                        userName: '<t t-esc="request.env.user.name"/>',
+                        companyId: <t t-esc="request.env.company.id"/>,
+                        companyName: '<t t-esc="request.env.company.name"/>',
+                        serverTime: '<t t-esc="datetime.datetime.now().isoformat()"/>',
+                        lang: '<t t-esc="request.env.context.get('lang', 'it_IT')"/>',
+                        tz: '<t t-esc="request.env.context.get('tz', 'Europe/Rome')}"/>'
+                    };
+                </script>
+            </t>
+
+            <t t-set="body_classname" t-value="'o_raccolta_app'"/>
+
+            <!-- Corpo dell'applicazione -->
+            <div id="raccolta_app_root" class="o_raccolta_container">
+
+                <!-- Loading Screen -->
+                <div id="raccolta_loading" class="o_raccolta_loading">
+                    <div class="o_loading_content">
+                        <div class="o_loading_spinner">
+                            <i class="fa fa-spinner fa-spin fa-3x"></i>
+                        </div>
+                        <h3>Caricamento Raccolta Ordini...</h3>
+                        <p id="loading_message">Inizializzazione in corso...</p>
+                        <div class="o_loading_progress">
+                            <div class="progress">
+                                <div id="loading_progress_bar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Header Applicazione -->
+                <header id="raccolta_header" class="o_raccolta_header" style="display: none;">
+                    <div class="o_header_content">
+                        <!-- Logo e titolo -->
+                        <div class="o_header_left">
+                            <h1 class="o_app_title">
+                                <i class="fa fa-shopping-cart"></i>
+                                Raccolta Ordini
+                            </h1>
+                            <span class="o_session_info">
+                                Sessione: <span id="session_name">-</span>
+                            </span>
+                        </div>
+
+                        <!-- Indicatori stato -->
+                        <div class="o_header_center">
+                            <div class="o_status_indicators">
+                                <!-- Indicatore connessione -->
+                                <div id="connection_status" class="o_status_item">
+                                    <i class="fa fa-wifi"></i>
+                                    <span>Online</span>
+                                </div>
+
+                                <!-- Indicatore sincronizzazione -->
+                                <div id="sync_status" class="o_status_item">
+                                    <i class="fa fa-sync"></i>
+                                    <span>Sincronizzato</span>
+                                </div>
+
+                                <!-- Contatore documenti -->
+                                <div id="documents_counter" class="o_status_item">
+                                    <i class="fa fa-file-alt"></i>
+                                    <span id="documents_count">0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Menu utente -->
+                        <div class="o_header_right">
+                            <div class="o_user_menu">
+                                <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="fa fa-user"></i>
+                                    <span id="user_name"><t t-esc="request.env.user.name"/></span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#" data-action="sync_now">
+                                        <i class="fa fa-sync"></i> Sincronizza Ora
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="#" data-action="settings">
+                                        <i class="fa fa-cog"></i> Impostazioni
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"/></li>
+                                    <li><a class="dropdown-item" href="#" data-action="close_session">
+                                        <i class="fa fa-sign-out-alt"></i> Chiudi Sessione
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="/web/session/logout">
+                                        <i class="fa fa-power-off"></i> Esci
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- Navigazione principale -->
+                <nav id="raccolta_nav" class="o_raccolta_nav" style="display: none;">
+                    <div class="o_nav_content">
+                        <button class="o_nav_item active" data-screen="dashboard">
+                            <i class="fa fa-home"></i>
+                            <span>Dashboard</span>
+                        </button>
+                        <button class="o_nav_item" data-screen="new_order">
+                            <i class="fa fa-plus-circle"></i>
+                            <span>Nuovo Ordine</span>
+                        </button>
+                        <button class="o_nav_item" data-screen="orders">
+                            <i class="fa fa-list"></i>
+                            <span>Ordini</span>
+                        </button>
+                        <button class="o_nav_item" data-screen="clients">
+                            <i class="fa fa-users"></i>
+                            <span>Clienti</span>
+                        </button>
+                        <button class="o_nav_item" data-screen="products">
+                            <i class="fa fa-box"></i>
+                            <span>Prodotti</span>
+                        </button>
+                        <button class="o_nav_item" data-screen="sync">
+                            <i class="fa fa-cloud"></i>
+                            <span>Sincronizzazione</span>
+                        </button>
+                    </div>
+                </nav>
+
+                <!-- Area contenuto principale -->
+                <main id="raccolta_main" class="o_raccolta_main" style="display: none;">
+                    <!-- I contenuti delle schermate verranno caricati qui dinamicamente -->
+                    <div id="screen_container" class="o_screen_container">
+                        <!-- Dashboard (default) -->
+                        <div id="screen_dashboard" class="o_screen active">
+                            <div class="o_screen_content">
+                                <h2>Dashboard</h2>
+                                <p>Caricamento dashboard...</p>
+                            </div>
+                        </div>
+
+                        <!-- Altri screen verranno aggiunti dinamicamente -->
+                    </div>
+                </main>
+
+                <!-- Footer con informazioni -->
+                <footer id="raccolta_footer" class="o_raccolta_footer" style="display: none;">
+                    <div class="o_footer_content">
+                        <div class="o_footer_left">
+                            <small>
+                                Agente: <span id="agent_code"><t t-esc="request.env.user.agent_code or 'N/A'"/></span> |
+                                Ultima sync: <span id="last_sync_time">Mai</span>
+                            </small>
+                        </div>
+                        <div class="o_footer_right">
+                            <small>
+                                Raccolta Ordini v1.0.0 |
+                                <span id="app_status">Inizializzazione...</span>
+                            </small>
+                        </div>
+                    </div>
+                </footer>
+
+                <!-- Notification Area -->
+                <div id="notification_area" class="o_notification_area"></div>
+
+                <!-- Modal Container -->
+                <div id="modal_container"></div>
+
+                <!-- Overlay per operazioni -->
+                <div id="app_overlay" class="o_app_overlay" style="display: none;">
+                    <div class="o_overlay_content">
+                        <div class="o_overlay_spinner">
+                            <i class="fa fa-spinner fa-spin fa-2x"></i>
+                        </div>
+                        <h4 id="overlay_title">Operazione in corso...</h4>
+                        <p id="overlay_message">Attendere prego...</p>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Lazy load resources -->
+            <t t-call="raccolta_ordini.lazy_load_resources"/>
+
+        </t>
+    </template>
+
+    <!-- ================================= -->
+    <!-- TEMPLATE ERRORE ACCESSO NEGATO    -->
+    <!-- ================================= -->
+
+    <template id="access_denied" name="Accesso Negato">
+        <t t-call="web.layout">
+            <t t-set="head_website">
+                <title>Accesso Negato - Raccolta Ordini</title>
+            </t>
+
+            <div class="container mt-5">
+                <div class="row justify-content-center">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-danger text-white">
+                                <h4><i class="fa fa-ban"></i> Accesso Negato</h4>
+                            </div>
+                            <div class="card-body text-center">
+                                <i class="fa fa-user-times fa-5x text-danger mb-4"></i>
+                                <h5>Non sei autorizzato ad accedere alla Raccolta Ordini</h5>
+                                <p class="text-muted">
+                                    <t t-esc="message or 'Il tuo account non ha i permessi necessari per utilizzare questa applicazione.'"/>
+                                </p>
+                                <hr/>
+                                <p>Contatta l'amministratore di sistema per ottenere l'accesso come <strong>Agente Raccolta Ordini</strong>.</p>
+                                <a href="/web" class="btn btn-primary">
+                                    <i class="fa fa-arrow-left"></i> Torna al Backend
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- ================================= -->
+    <!-- TEMPLATE PAGINA ERRORE            -->
+    <!-- ================================= -->
+
+    <template id="error_page" name="Pagina Errore">
+        <t t-call="web.layout">
+            <t t-set="head_website">
+                <title>Errore - Raccolta Ordini</title>
+            </t>
+
+            <div class="container mt-5">
+                <div class="row justify-content-center">
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-header bg-warning">
+                                <h4><i class="fa fa-exclamation-triangle"></i> Errore Applicazione</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-danger">
+                                    <h5>Si è verificato un errore</h5>
+                                    <p><t t-esc="error_message or 'Errore sconosciuto nell\'applicazione.'"/></p>
+                                </div>
+
+                                <h6>Possibili soluzioni:</h6>
+                                <ul>
+                                    <li>Ricarica la pagina</li>
+                                    <li>Verifica la connessione internet</li>
+                                    <li>Cancella la cache del browser</li>
+                                    <li>Contatta l'amministratore di sistema</li>
+                                </ul>
+
+                                <div class="mt-4">
+                                    <button onclick="location.reload()" class="btn btn-primary">
+                                        <i class="fa fa-refresh"></i> Ricarica Pagina
+                                    </button>
+                                    <a href="/web" class="btn btn-secondary">
+                                        <i class="fa fa-arrow-left"></i> Torna al Backend
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- ================================= -->
+    <!-- TEMPLATE OFFLINE                  -->
+    <!-- ================================= -->
+
+    <template id="offline_page" name="Modalità Offline">
+        <div class="o_offline_banner">
+            <div class="container-fluid">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <i class="fa fa-wifi-slash text-warning fa-2x"></i>
+                    </div>
+                    <div class="col">
+                        <h5 class="mb-0">Modalità Offline</h5>
+                        <small class="text-muted">
+                            Connessione internet non disponibile.
+                            L'app continua a funzionare offline.
+                        </small>
+                    </div>
+                    <div class="col-auto">
+                        <button class="btn btn-sm btn-outline-warning" onclick="app.checkConnection()">
+                            <i class="fa fa-sync"></i> Riprova
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+</odoo>

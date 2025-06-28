@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================================= -->
+    <!-- VISTA FORM CONFIGURAZIONE         -->
+    <!-- ================================= -->
+
+    <record id="view_raccolta_config_form" model="ir.ui.view">
+        <field name="name">raccolta.config.form</field>
+        <field name="model">raccolta.config</field>
+        <field name="arch" type="xml">
+            <form string="Configurazione Raccolta Ordini">
+                <header>
+                    <button name="open_ui" string="Apri Raccolta Ordini" type="object" class="btn-primary"/>
+                    <button name="open_session" string="Apri Sessione" type="object" class="btn-secondary"/>
+                    <button name="close_session" string="Chiudi Sessione" type="object" class="btn-secondary"
+                            attrs="{'invisible': [('current_session_id', '=', False)]}"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </header>
+
+                <sheet>
+                    <!-- Notifica sessione attiva -->
+                    <div class="alert alert-info" role="alert" attrs="{'invisible': [('current_session_id', '=', False)]}">
+                        <strong>Sessione Attiva:</strong>
+                        <field name="current_session_id" readonly="1"/>
+                    </div>
+
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Nome configurazione..."/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group name="basic_info" string="Informazioni Base">
+                            <field name="company_id" options="{'no_create': True}"/>
+                            <field name="warehouse_id" options="{'no_create': True}" domain="[('company_id', '=', company_id)]"/>
+                            <field name="location_id" options="{'no_create': True}" domain="[('usage', '=', 'internal')]"/>
+                            <field name="location_dest_id" options="{'no_create': True}" domain="[('usage', '=', 'customer')]"/>
+                        </group>
+
+                        <group name="ddt_config" string="Configurazione DDT">
+                            <field name="auto_create_ddt"/>
+                            <field name="ddt_type_id" options="{'no_create': True}"
+                                   domain="[('company_id', '=', company_id)]"
+                                   attrs="{'required': [('auto_create_ddt', '=', True)]}"/>
+                            <field name="ddt_transport_reason_id" options="{'no_create': True}"/>
+                            <field name="ddt_goods_appearance_id" options="{'no_create': True}"/>
+                            <field name="ddt_transport_condition_id" options="{'no_create': True}"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <!-- Configurazione Numerazione -->
+                        <page string="Numerazione" name="numbering">
+                            <group>
+                                <group name="numbering_config" string="Configurazione Numerazione">
+                                    <field name="use_agent_numbering"/>
+                                    <field name="global_sequence_id" options="{'no_create': True}"
+                                           attrs="{'invisible': [('use_agent_numbering', '=', True)],
+                                                   'required': [('use_agent_numbering', '=', False)]}"/>
+                                </group>
+                            </group>
+
+                            <div class="alert alert-info" attrs="{'invisible': [('use_agent_numbering', '=', False)]}">
+                                <strong>Numerazione per Agente:</strong><br/>
+                                Ogni agente avrà sequenze personalizzate del tipo:<br/>
+                                • Ordini: RO/AG001/001, RO/AG001/002, ...<br/>
+                                • DDT: DDT/AG001/001, DDT/AG001/002, ...<br/>
+                                • Picking: PICK/AG001/001, PICK/AG001/002, ...
+                            </div>
+                        </page>
+
+                        <!-- Configurazione Ricevute -->
+                        <page string="Ricevute" name="receipts">
+                            <group>
+                                <group name="receipt_config" string="Configurazione Ricevute">
+                                    <field name="receipt_format"/>
+                                    <field name="auto_print_receipt"/>
+                                </group>
+
+                                <group name="receipt_content" string="Contenuto Ricevute">
+                                    <field name="receipt_header" placeholder="Intestazione personalizzata..."/>
+                                    <field name="receipt_footer" placeholder="Piè di pagina personalizzato..."/>
+                                </group>
+                            </group>
+
+                            <group>
+                                <group name="scanner_config" string="Scanner e Firma">
+                                    <field name="barcode_scanner"/>
+                                    <field name="camera_scanner" attrs="{'invisible': [('barcode_scanner', '=', False)]}"/>
+                                    <field name="signature_enabled"/>
+                                    <field name="signature_required" attrs="{'invisible': [('signature_enabled', '=', False)]}"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <!-- Configurazione Offline -->
+                        <page string="Offline" name="offline">
+                            <group>
+                                <group name="offline_config" string="Configurazione Offline">
+                                    <field name="max_offline_days"/>
+                                    <field name="sync_batch_size"/>
+                                    <field name="auto_sync_interval"/>
+                                </group>
+                            </group>
+
+                            <group>
+                                <group name="product_filters" string="Filtri Prodotti">
+                                    <field name="limit_categories"/>
+                                    <field name="available_categ_ids" widget="many2many_tags"
+                                           attrs="{'invisible': [('limit_categories', '=', False)],
+                                                   'required': [('limit_categories', '=', True)]}"/>
+                                </group>
+
+                                <group name="partner_filters" string="Filtri Clienti">
+                                    <field name="limit_partner_categories"/>
+                                    <field name="available_partner_categ_ids" widget="many2many_tags"
+                                           attrs="{'invisible': [('limit_partner_categories', '=', False)],
+                                                   'required': [('limit_partner_categories', '=', True)]}"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <!-- Sessioni -->
+                        <page string="Sessioni" name="sessions">
+                            <field name="session_ids" readonly="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="user_id"/>
+                                    <field name="start_at"/>
+                                    <field name="stop_at"/>
+                                    <field name="state"/>
+                                    <field name="order_count"/>
+                                    <field name="pending_order_count"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- ================================= -->
+    <!-- VISTA TREE CONFIGURAZIONE         -->
+    <!-- ================================= -->
+
+    <record id="view_raccolta_config_tree" model="ir.ui.view">
+        <field name="name">raccolta.config.tree</field>
+        <field name="model">raccolta.config</field>
+        <field name="arch" type="xml">
+            <tree string="Configurazioni Raccolta Ordini">
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="warehouse_id"/>
+                <field name="receipt_format"/>
+                <field name="use_agent_numbering"/>
+                <field name="auto_create_ddt"/>
+                <field name="current_session_id"/>
+                <field name="active"/>
+                <button name="open_ui" string="Apri" type="object" icon="fa-external-link" class="btn-link"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ================================= -->
+    <!-- VISTA KANBAN CONFIGURAZIONE       -->
+    <!-- ================================= -->
+
+    <record id="view_raccolta_config_kanban" model="ir.ui.view">
+        <field name="name">raccolta.config.kanban</field>
+        <field name="model">raccolta.config</field>
+        <field name="arch" type="xml">
+            <kanban string="Configurazioni Raccolta">
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="warehouse_id"/>
+                <field name="current_session_id"/>
+                <field name="receipt_format"/>
+                <field name="active"/>
+
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_card oe_kanban_global_click">
+                            <div class="o_kanban_card_header">
+                                <div class="o_kanban_card_header_title">
+                                    <div class="o_primary">
+                                        <strong><field name="name"/></strong>
+                                    </div>
+                                    <div class="o_secondary">
+                                        <i class="fa fa-building"/> <field name="company_id"/>
+                                    </div>
+                                </div>
+                                <div class="o_kanban_manage_button_section">
+                                    <a class="o_kanban_manage_toggle_button" href="#">
+                                        <i class="fa fa-ellipsis-v" role="img" aria-label="Manage" title="Manage"/>
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="o_kanban_card_content">
+                                <div class="o_kanban_card_sub">
+                                    <i class="fa fa-warehouse"/> <field name="warehouse_id"/>
+                                </div>
+                                <div class="o_kanban_card_sub">
+                                    <i class="fa fa-print"/> Formato: <field name="receipt_format"/>
+                                </div>
+
+                                <t t-if="record.current_session_id.raw_value">
+                                    <div class="alert alert-success mt-2">
+                                        <i class="fa fa-play-circle"/> Sessione Attiva
+                                    </div>
+                                </t>
+                            </div>
+
+                            <div class="o_kanban_card_manage_pane dropdown-menu" role="menu">
+                                <div class="o_kanban_card_manage_section o_kanban_manage_reports">
+                                    <div role="menuitem">
+                                        <a name="open_ui" type="object">Apri Raccolta Ordini</a>
+                                    </div>
+                                    <div role="menuitem">
+                                        <a name="open_session" type="object">Apri Sessione</a>
+                                    </div>
+                                </div>
+                                <div class="o_kanban_card_manage_section o_kanban_manage_new">
+                                    <div role="menuitem">
+                                        <a type="edit">Modifica</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>

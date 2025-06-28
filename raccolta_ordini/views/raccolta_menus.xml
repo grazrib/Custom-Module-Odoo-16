@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ================================= -->
+    <!-- MENU PRINCIPALE RACCOLTA ORDINI  -->
+    <!-- ================================= -->
+
+    <menuitem id="menu_raccolta_root"
+              name="Raccolta Ordini"
+              sequence="85"
+              groups="group_raccolta_agent"
+              web_icon="raccolta_ordini,static/description/icon.png"/>
+
+    <!-- ================================= -->
+    <!-- SOTTOMENU OPERAZIONI              -->
+    <!-- ================================= -->
+
+    <menuitem id="menu_raccolta_operations"
+              name="Operazioni"
+              parent="menu_raccolta_root"
+              sequence="10"/>
+
+    <!-- Accesso diretto all'applicazione -->
+    <menuitem id="menu_raccolta_app"
+              name="Applicazione Raccolta"
+              parent="menu_raccolta_operations"
+              action="action_raccolta_ui"
+              sequence="10"
+              groups="group_raccolta_agent"/>
+
+    <!-- La mia sessione attuale -->
+    <menuitem id="menu_my_current_session"
+              name="La Mia Sessione"
+              parent="menu_raccolta_operations"
+              action="action_my_current_session"
+              sequence="20"
+              groups="group_raccolta_agent"/>
+
+    <!-- Tutte le sessioni -->
+    <menuitem id="menu_raccolta_sessions"
+              name="Tutte le Sessioni"
+              parent="menu_raccolta_operations"
+              action="action_raccolta_session"
+              sequence="30"
+              groups="group_raccolta_supervisor"/>
+
+    <!-- ================================= -->
+    <!-- SOTTOMENU DOCUMENTI               -->
+    <!-- ================================= -->
+
+    <menuitem id="menu_raccolta_documents"
+              name="Documenti"
+              parent="menu_raccolta_root"
+              sequence="20"/>
+
+    <!-- Ordini raccolta -->
+    <menuitem id="menu_raccolta_orders"
+              name="Ordini"
+              parent="menu_raccolta_documents"
+              action="action_orders_raccolta"
+              sequence="10"
+              groups="group_raccolta_agent"/>
+
+    <!-- Picking raccolta -->
+    <menuitem id="menu_raccolta_pickings"
+              name="Picking"
+              parent="menu_raccolta_documents"
+              action="action_picking_raccolta"
+              sequence="20"
+              groups="group_raccolta_agent"/>
+
+    <!-- DDT collegati -->
+    <menuitem id="menu_raccolta_ddts"
+              name="DDT"
+              parent="menu_raccolta_documents"
+              action="action_ddt_raccolta"
+              sequence="30"
+              groups="group_raccolta_agent"/>
+
+    <!-- ================================= -->
+    <!-- SOTTOMENU SINCRONIZZAZIONE       -->
+    <!-- ================================= -->
+
+    <menuitem id="menu_raccolta_sync"
+              name="Sincronizzazione"
+              parent="menu_raccolta_root"
+              sequence="30"
+              groups="group_raccolta_supervisor"/>
+
+    <!-- Documenti da sincronizzare -->
+    <menuitem id="menu_pending_sync_orders"
+              name="Ordini da Sincronizzare"
+              parent="menu_raccolta_sync"
+              action="action_orders_pending_sync"
+              sequence="10"/>
+
+    <!-- Sessioni con sync pending -->
+    <menuitem id="menu_sessions_pending_sync"
+              name="Sessioni da Sincronizzare"
+              parent="menu_raccolta_sync"
+              action="action_sessions_pending_sync"
+              sequence="20"/>
+
+    <!-- Wizard sincronizzazione massiva -->
+    <menuitem id="menu_mass_sync_wizard"
+              name="Sincronizzazione Massiva"
+              parent="menu_raccolta_sync"
+              action="action_mass_sync_wizard"
+              sequence="30"
+              groups="group_raccolta_manager"/>
+
+    <!-- ================================= -->
+    <!-- SOTTOMENU CONFIGURAZIONE          -->
+    <!-- ================================= -->
+
+    <menuitem id="menu_raccolta_config"
+              name="Configurazione"
+              parent="menu_raccolta_root"
+              sequence="40"
+              groups="group_raccolta_manager"/>
+
+    <!-- Configurazioni raccolta -->
+    <menuitem id="menu_raccolta_configs"
+              name="Configurazioni"
+              parent="menu_raccolta_config"
+              action="action_raccolta_config"
+              sequence="10"/>
+
+    <!-- Gestione agenti -->
+    <menuitem id="menu_raccolta_agents"
+              name="Agenti"
+              parent="menu_raccolta_config"
+              action="action_raccolta_users"
+              sequence="20"/>
+
+    <!-- Setup guidato agenti -->
+    <menuitem id="menu_setup_agent_wizard"
+              name="Setup Agenti"
+              parent="menu_raccolta_config"
+              action="action_setup_agent_wizard"
+              sequence="30"
+              groups="group_raccolta_admin"/>
+
+    <!-- ================================= -->
+    <!-- SOTTOMENU REPORT                  -->
+    <!-- ================================= -->
+
+    <menuitem id="menu_raccolta_reports"
+              name="Report"
+              parent="menu_raccolta_root"
+              sequence="50"
+              groups="group_raccolta_supervisor"/>
+
+    <!-- Performance agenti -->
+    <menuitem id="menu_agent_performance"
+              name="Performance Agenti"
+              parent="menu_raccolta_reports"
+              action="action_agent_performance_report"
+              sequence="10"/>
+
+    <!-- Report ordini -->
+    <menuitem id="menu_order_reports"
+              name="Report Ordini"
+              parent="menu_raccolta_reports"
+              action="action_order_report"
+              sequence="20"/>
+
+    <!-- Stato sincronizzazione -->
+    <menuitem id="menu_sync_status_report"
+              name="Stato Sincronizzazione"
+              parent="menu_raccolta_reports"
+              action="action_sync_status_report"
+              sequence="30"/>
+
+    <!-- ================================= -->
+    <!-- AZIONI CORRISPONDENTI             -->
+    <!-- ================================= -->
+
+    <!-- Azione applicazione UI -->
+    <record id="action_raccolta_ui" model="ir.actions.act_url">
+        <field name="name">Applicazione Raccolta Ordini</field>
+        <field name="url">/raccolta/ui</field>
+        <field name="target">self</field>
+    </record>
+
+    <!-- Azione configurazioni -->
+    <record id="action_raccolta_config" model="ir.actions.act_window">
+        <field name="name">Configurazioni Raccolta</field>
+        <field name="res_model">raccolta.config</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crea la prima configurazione per la raccolta ordini!
+            </p>
+            <p>
+                Le configurazioni definiscono come funziona l'applicazione di raccolta ordini:
+                warehouse, sequenze, impostazioni DDT, etc.
+            </p>
+        </field>
+    </record>
+
+    <!-- Azione gestione utenti agenti -->
+    <record id="action_raccolta_users" model="ir.actions.act_window">
+        <field name="name">Agenti Raccolta Ordini</field>
+        <field name="res_model">res.users</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('is_raccolta_agent', '=', True)]</field>
+        <field name="context">{'default_is_raccolta_agent': True}</field>
+        <field name="view_id" ref="view_users_tree_raccolta"/>
+    </record>
+
+    <!-- Azione DDT raccolta -->
+    <record id="action_ddt_raccolta" model="ir.actions.act_window">
+        <field name="name">DDT Raccolta Ordini</field>
+        <field name="res_model">stock.delivery.note</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('raccolta_session_id', '!=', False)]</field>
+        <field name="context">{'search_default_raccolta_ddts': 1}</field>
+    </record>
+
+    <!-- ================================= -->
+    <!-- INTEGRAZIONI MENU ESISTENTI      -->
+    <!-- ================================= -->
+
+    <!-- Aggiungi link in menu Vendite -->
+    <menuitem id="menu_sale_raccolta_link"
+              name="Raccolta Ordini"
+              parent="sale.sale_menu_root"
+              action="action_raccolta_ui"
+              sequence="99"
+              groups="group_raccolta_agent"/>
+
+    <!-- Aggiungi link in menu Magazzino -->
+    <menuitem id="menu_stock_raccolta_link"
+              name="Raccolta Ordini"
+              parent="stock.menu_stock_root"
+              action="action_picking_raccolta"
+              sequence="99"
+              groups="group_raccolta_agent"/>
+
+    <!-- ================================= -->
+    <!-- MENU AZIONI RAPIDE               -->
+    <!-- ================================= -->
+
+    <!-- Menu contestuale per azioni rapide -->
+    <menuitem id="menu_raccolta_quick_actions"
+              name="Azioni Rapide"
+              parent="menu_raccolta_operations"
+              sequence="40"
+              groups="group_raccolta_agent"/>
+
+    <!-- Nuovo ordine rapido -->
+    <menuitem id="menu_quick_new_order"
+              name="Nuovo Ordine"
+              parent="menu_raccolta_quick_actions"
+              action="action_quick_new_order"
+              sequence="10"/>
+
+    <!-- Stampa ultima ricevuta -->
+    <menuitem id="menu_quick_print_last_receipt"
+              name="Stampa Ultima Ricevuta"
+              parent="menu_raccolta_quick_actions"
+              action="action_print_last_receipt"
+              sequence="20"/>
+
+    <!-- Export dati offline -->
+    <menuitem id="menu_export_offline_data"
+              name="Export Dati Offline"
+              parent="menu_raccolta_quick_actions"
+              action="action_export_data_wizard"
+              sequence="30"
+              groups="group_raccolta_supervisor"/>
+
+    <!-- ================================= -->
+    <!-- AZIONI RAPIDE                    -->
+    <!-- ================================= -->
+
+    <record id="action_quick_new_order" model="ir.actions.act_window">
+        <field name="name">Nuovo Ordine Veloce</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_order_form_raccolta"/>
+        <field name="context">{
+            'default_raccolta_session_id': False,
+            'form_view_initial_mode': 'edit',
+            'quick_create': True
+        }</field>
+        <field name="target">new</field>
+    </record>
+
+    <record id="action_print_last_receipt" model="ir.actions.server">
+        <field name="name">Stampa Ultima Ricevuta</field>
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="state">code</field>
+        <field name="code">
+# Trova ultimo ordine dell'utente corrente
+last_order = env['sale.order'].search([
+    ('raccolta_agent_id', '=', env.user.id),
+    ('raccolta_session_id', '!=', False)
+], limit=1, order='create_date desc')
+
+if last_order:
+    # Stampa ricevuta
+    action = last_order.action_print_receipt_48mm()
+else:
+    # Mostra messaggio
+    action = {
+        'type': 'ir.actions.client',
+        'tag': 'display_notification',
+        'params': {
+            'message': 'Nessun ordine trovato per la stampa',
+            'type': 'warning'
+        }
+    }
+        </field>
+    </record>
+
+    <!-- ================================= -->
+    <!-- SHORTCUT E FAVORITI              -->
+    <!-- ================================= -->
+
+    <!-- Shortcut per accesso rapido -->
+    <record id="shortcut_raccolta_app" model="ir.ui.menu">
+        <field name="name">🛒 Raccolta</field>
+        <field name="action" ref="action_raccolta_ui"/>
+        <field name="parent_id" ref="base.menu_administration"/>
+        <field name="sequence">1</field>
+        <field name="groups_id" eval="[(4, ref('group_raccolta_agent'))]"/>
+    </record>
+
+</odoo>

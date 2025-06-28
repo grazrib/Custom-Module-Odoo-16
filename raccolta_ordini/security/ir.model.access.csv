@@ -1,0 +1,127 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+
+# ===== RACCOLTA CONFIG =====
+access_raccolta_config_agent,raccolta.config.agent,model_raccolta_config,group_raccolta_agent,1,0,0,0
+access_raccolta_config_supervisor,raccolta.config.supervisor,model_raccolta_config,group_raccolta_supervisor,1,0,0,0
+access_raccolta_config_manager,raccolta.config.manager,model_raccolta_config,group_raccolta_manager,1,1,1,0
+access_raccolta_config_admin,raccolta.config.admin,model_raccolta_config,group_raccolta_admin,1,1,1,1
+
+# ===== RACCOLTA SESSION =====
+access_raccolta_session_agent,raccolta.session.agent,model_raccolta_session,group_raccolta_agent,1,1,1,0
+access_raccolta_session_supervisor,raccolta.session.supervisor,model_raccolta_session,group_raccolta_supervisor,1,1,1,0
+access_raccolta_session_manager,raccolta.session.manager,model_raccolta_session,group_raccolta_manager,1,1,1,1
+access_raccolta_session_admin,raccolta.session.admin,model_raccolta_session,group_raccolta_admin,1,1,1,1
+
+# ===== RACCOLTA COUNTER =====
+access_raccolta_counter_agent,raccolta.counter.agent,model_raccolta_counter,group_raccolta_agent,1,1,1,0
+access_raccolta_counter_supervisor,raccolta.counter.supervisor,model_raccolta_counter,group_raccolta_supervisor,1,1,1,0
+access_raccolta_counter_manager,raccolta.counter.manager,model_raccolta_counter,group_raccolta_manager,1,1,1,1
+access_raccolta_counter_admin,raccolta.counter.admin,model_raccolta_counter,group_raccolta_admin,1,1,1,1
+
+# ===== RES.USERS (extended) =====
+access_res_users_agent,res.users.agent,base.model_res_users,group_raccolta_agent,1,0,0,0
+access_res_users_supervisor,res.users.supervisor,base.model_res_users,group_raccolta_supervisor,1,0,0,0
+access_res_users_manager,res.users.manager,base.model_res_users,group_raccolta_manager,1,1,0,0
+access_res_users_admin,res.users.admin,base.model_res_users,group_raccolta_admin,1,1,1,0
+
+# ===== SALE.ORDER (extended) =====
+access_sale_order_agent,sale.order.agent,sale.model_sale_order,group_raccolta_agent,1,1,1,0
+access_sale_order_supervisor,sale.order.supervisor,sale.model_sale_order,group_raccolta_supervisor,1,1,1,0
+access_sale_order_manager,sale.order.manager,sale.model_sale_order,group_raccolta_manager,1,1,1,1
+access_sale_order_admin,sale.order.admin,sale.model_sale_order,group_raccolta_admin,1,1,1,1
+
+# ===== SALE.ORDER.LINE (extended) =====
+access_sale_order_line_agent,sale.order.line.agent,sale.model_sale_order_line,group_raccolta_agent,1,1,1,0
+access_sale_order_line_supervisor,sale.order.line.supervisor,sale.model_sale_order_line,group_raccolta_supervisor,1,1,1,0
+access_sale_order_line_manager,sale.order.line.manager,sale.model_sale_order_line,group_raccolta_manager,1,1,1,1
+access_sale_order_line_admin,sale.order.line.admin,sale.model_sale_order_line,group_raccolta_admin,1,1,1,1
+
+# ===== STOCK.PICKING (extended) =====
+access_stock_picking_agent,stock.picking.agent,stock.model_stock_picking,group_raccolta_agent,1,1,1,0
+access_stock_picking_supervisor,stock.picking.supervisor,stock.model_stock_picking,group_raccolta_supervisor,1,1,1,0
+access_stock_picking_manager,stock.picking.manager,stock.model_stock_picking,group_raccolta_manager,1,1,1,1
+access_stock_picking_admin,stock.picking.admin,stock.model_stock_picking,group_raccolta_admin,1,1,1,1
+
+# ===== STOCK.MOVE =====
+access_stock_move_agent,stock.move.agent,stock.model_stock_move,group_raccolta_agent,1,1,1,0
+access_stock_move_supervisor,stock.move.supervisor,stock.model_stock_move,group_raccolta_supervisor,1,1,1,0
+access_stock_move_manager,stock.move.manager,stock.model_stock_move,group_raccolta_manager,1,1,1,1
+access_stock_move_admin,stock.move.admin,stock.model_stock_move,group_raccolta_admin,1,1,1,1
+
+# ===== STOCK.DELIVERY.NOTE (DDT) =====
+access_stock_delivery_note_agent,stock.delivery.note.agent,l10n_it_delivery_note.model_stock_delivery_note,group_raccolta_agent,1,1,1,0
+access_stock_delivery_note_supervisor,stock.delivery.note.supervisor,l10n_it_delivery_note.model_stock_delivery_note,group_raccolta_supervisor,1,1,1,0
+access_stock_delivery_note_manager,stock.delivery.note.manager,l10n_it_delivery_note.model_stock_delivery_note,group_raccolta_manager,1,1,1,1
+access_stock_delivery_note_admin,stock.delivery.note.admin,l10n_it_delivery_note.model_stock_delivery_note,group_raccolta_admin,1,1,1,1
+
+# ===== STOCK.DELIVERY.NOTE.LINE =====
+access_stock_delivery_note_line_agent,stock.delivery.note.line.agent,l10n_it_delivery_note.model_stock_delivery_note_line,group_raccolta_agent,1,1,1,0
+access_stock_delivery_note_line_supervisor,stock.delivery.note.line.supervisor,l10n_it_delivery_note.model_stock_delivery_note_line,group_raccolta_supervisor,1,1,1,0
+access_stock_delivery_note_line_manager,stock.delivery.note.line.manager,l10n_it_delivery_note.model_stock_delivery_note_line,group_raccolta_manager,1,1,1,1
+access_stock_delivery_note_line_admin,stock.delivery.note.line.admin,l10n_it_delivery_note.model_stock_delivery_note_line,group_raccolta_admin,1,1,1,1
+
+# ===== RES.PARTNER (readonly per agenti) =====
+access_res_partner_agent,res.partner.agent,base.model_res_partner,group_raccolta_agent,1,0,0,0
+access_res_partner_supervisor,res.partner.supervisor,base.model_res_partner,group_raccolta_supervisor,1,1,1,0
+access_res_partner_manager,res.partner.manager,base.model_res_partner,group_raccolta_manager,1,1,1,0
+access_res_partner_admin,res.partner.admin,base.model_res_partner,group_raccolta_admin,1,1,1,1
+
+# ===== PRODUCT.PRODUCT (readonly per agenti) =====
+access_product_product_agent,product.product.agent,product.model_product_product,group_raccolta_agent,1,0,0,0
+access_product_product_supervisor,product.product.supervisor,product.model_product_product,group_raccolta_supervisor,1,0,0,0
+access_product_product_manager,product.product.manager,product.model_product_product,group_raccolta_manager,1,1,0,0
+access_product_product_admin,product.product.admin,product.model_product_product,group_raccolta_admin,1,1,1,0
+
+# ===== PRODUCT.TEMPLATE (readonly per agenti) =====
+access_product_template_agent,product.template.agent,product.model_product_template,group_raccolta_agent,1,0,0,0
+access_product_template_supervisor,product.template.supervisor,product.model_product_template,group_raccolta_supervisor,1,0,0,0
+access_product_template_manager,product.template.manager,product.model_product_template,group_raccolta_manager,1,1,0,0
+access_product_template_admin,product.template.admin,product.model_product_template,group_raccolta_admin,1,1,1,0
+
+# ===== PRODUCT.CATEGORY (readonly per agenti) =====
+access_product_category_agent,product.category.agent,product.model_product_category,group_raccolta_agent,1,0,0,0
+access_product_category_supervisor,product.category.supervisor,product.model_product_category,group_raccolta_supervisor,1,0,0,0
+access_product_category_manager,product.category.manager,product.model_product_category,group_raccolta_manager,1,1,0,0
+access_product_category_admin,product.category.admin,product.model_product_category,group_raccolta_admin,1,1,1,0
+
+# ===== UOM.UOM (readonly per agenti) =====
+access_uom_uom_agent,uom.uom.agent,uom.model_uom_uom,group_raccolta_agent,1,0,0,0
+access_uom_uom_supervisor,uom.uom.supervisor,uom.model_uom_uom,group_raccolta_supervisor,1,0,0,0
+access_uom_uom_manager,uom.uom.manager,uom.model_uom_uom,group_raccolta_manager,1,0,0,0
+access_uom_uom_admin,uom.uom.admin,uom.model_uom_uom,group_raccolta_admin,1,1,0,0
+
+# ===== ACCOUNT.TAX (readonly per agenti) =====
+access_account_tax_agent,account.tax.agent,account.model_account_tax,group_raccolta_agent,1,0,0,0
+access_account_tax_supervisor,account.tax.supervisor,account.model_account_tax,group_raccolta_supervisor,1,0,0,0
+access_account_tax_manager,account.tax.manager,account.model_account_tax,group_raccolta_manager,1,0,0,0
+access_account_tax_admin,account.tax.admin,account.model_account_tax,group_raccolta_admin,1,1,0,0
+
+# ===== IR.SEQUENCE (per numerazione agenti) =====
+access_ir_sequence_agent,ir.sequence.agent,base.model_ir_sequence,group_raccolta_agent,1,0,0,0
+access_ir_sequence_supervisor,ir.sequence.supervisor,base.model_ir_sequence,group_raccolta_supervisor,1,0,0,0
+access_ir_sequence_manager,ir.sequence.manager,base.model_ir_sequence,group_raccolta_manager,1,1,1,0
+access_ir_sequence_admin,ir.sequence.admin,base.model_ir_sequence,group_raccolta_admin,1,1,1,1
+
+# ===== STOCK.LOCATION (readonly per agenti) =====
+access_stock_location_agent,stock.location.agent,stock.model_stock_location,group_raccolta_agent,1,0,0,0
+access_stock_location_supervisor,stock.location.supervisor,stock.model_stock_location,group_raccolta_supervisor,1,0,0,0
+access_stock_location_manager,stock.location.manager,stock.model_stock_location,group_raccolta_manager,1,0,0,0
+access_stock_location_admin,stock.location.admin,stock.model_stock_location,group_raccolta_admin,1,1,0,0
+
+# ===== STOCK.WAREHOUSE (readonly per agenti) =====
+access_stock_warehouse_agent,stock.warehouse.agent,stock.model_stock_warehouse,group_raccolta_agent,1,0,0,0
+access_stock_warehouse_supervisor,stock.warehouse.supervisor,stock.model_stock_warehouse,group_raccolta_supervisor,1,0,0,0
+access_stock_warehouse_manager,stock.warehouse.manager,stock.model_stock_warehouse,group_raccolta_manager,1,0,0,0
+access_stock_warehouse_admin,stock.warehouse.admin,stock.model_stock_warehouse,group_raccolta_admin,1,1,0,0
+
+# ===== STOCK.QUANT (per controllo stock) =====
+access_stock_quant_agent,stock.quant.agent,stock.model_stock_quant,group_raccolta_agent,1,0,0,0
+access_stock_quant_supervisor,stock.quant.supervisor,stock.model_stock_quant,group_raccolta_supervisor,1,0,0,0
+access_stock_quant_manager,stock.quant.manager,stock.model_stock_quant,group_raccolta_manager,1,1,0,0
+access_stock_quant_admin,stock.quant.admin,stock.model_stock_quant,group_raccolta_admin,1,1,1,0
+
+# ===== DDT CONFIGURATION MODELS =====
+access_stock_delivery_note_type_agent,stock.delivery.note.type.agent,l10n_it_delivery_note_base.model_stock_delivery_note_type,group_raccolta_agent,1,0,0,0
+access_stock_delivery_note_type_supervisor,stock.delivery.note.type.supervisor,l10n_it_delivery_note_base.model_stock_delivery_note_type,group_raccolta_supervisor,1,0,0,0
+access_stock_delivery_note_type_manager,stock.delivery.note.type.manager,l10n_it_delivery_note_base.model_stock_delivery_note_type,group_raccolta_manager,1,1,0,0
+access_stock_delivery
