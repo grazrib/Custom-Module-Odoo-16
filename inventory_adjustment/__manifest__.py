@@ -20,6 +20,7 @@
     ],
     'assets': {
         'web.assets_backend': [
+			'inventory_adjustment/static/src/js/inventory_adjustment_mobile_focus.js',
             'inventory_adjustment/static/src/js/inventory_adjustment_mobile.js',
             'inventory_adjustment/static/src/js/barcode_scanner.js',
             'inventory_adjustment/static/src/js/quagga.js',
