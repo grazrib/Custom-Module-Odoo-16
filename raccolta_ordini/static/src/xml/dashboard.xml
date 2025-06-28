@@ -1,1 +1,299 @@
- 
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <!-- Dashboard Principale -->
+    <t t-name="raccolta.Dashboard">
+        <div class="raccolta-dashboard">
+            <!-- Header Dashboard -->
+            <div class="dashboard-header">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">Dashboard Raccolta Ordini</h1>
+                        <p class="text-gray-600 mt-1">Panoramica attività offline</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button class="btn btn-secondary" id="refresh-dashboard">
+                            <i class="fas fa-sync mr-2"></i>Aggiorna
+                        </button>
+                        <button class="btn btn-primary" id="start-new-session">
+                            <i class="fas fa-plus mr-2"></i>Nuova Sessione
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Connessione -->
+            <div class="network-status-card card mb-6">
+                <div class="card-body">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="status-indicator" id="network-indicator">
+                                <div class="status-dot bg-gray-400"></div>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold">Stato Connessione</h3>
+                                <p class="text-sm text-gray-600" id="network-status-text">Controllo in corso...</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <button class="btn btn-sm btn-secondary" id="sync-now" disabled>
+                                <i class="fas fa-cloud-upload-alt mr-1"></i>Sincronizza
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistiche Principali -->
+            <div class="dashboard-stats">
+                <div class="stat-card">
+                    <div class="stat-icon bg-blue-100 text-blue-600">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="orders-count">0</div>
+                        <div class="stat-label">Ordini Offline</div>
+                        <div class="stat-change" id="orders-change">
+                            <i class="fas fa-arrow-up"></i>
+                            <span>0 oggi</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon bg-green-100 text-green-600">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="synced-count">0</div>
+                        <div class="stat-label">Sincronizzati</div>
+                        <div class="stat-change positive" id="synced-change">
+                            <i class="fas fa-arrow-up"></i>
+                            <span>0% completato</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon bg-yellow-100 text-yellow-600">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="pending-count">0</div>
+                        <div class="stat-label">In Attesa</div>
+                        <div class="stat-change" id="pending-change">
+                            <i class="fas fa-clock"></i>
+                            <span>Da sincronizzare</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon bg-purple-100 text-purple-600">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="clients-count">0</div>
+                        <div class="stat-label">Clienti</div>
+                        <div class="stat-change" id="clients-change">
+                            <i class="fas fa-database"></i>
+                            <span>Offline</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sessione Corrente -->
+            <div class="current-session-section mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold text-gray-900">Sessione Corrente</h2>
+                    <button class="btn btn-sm btn-secondary" id="manage-sessions">
+                        <i class="fas fa-cog mr-1"></i>Gestisci
+                    </button>
+                </div>
+
+                <div class="current-session-card card" id="current-session-card">
+                    <!-- Contenuto popolato dinamicamente -->
+                </div>
+            </div>
+
+            <!-- Azioni Rapide -->
+            <div class="quick-actions-section mb-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Azioni Rapide</h2>
+                <div class="quick-actions-grid">
+                    <button class="quick-action-card" id="create-order">
+                        <div class="quick-action-icon bg-blue-100 text-blue-600">
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        <div class="quick-action-content">
+                            <h3>Nuovo Ordine</h3>
+                            <p>Crea un nuovo ordine</p>
+                        </div>
+                    </button>
+
+                    <button class="quick-action-card" id="scan-product">
+                        <div class="quick-action-icon bg-green-100 text-green-600">
+                            <i class="fas fa-barcode"></i>
+                        </div>
+                        <div class="quick-action-content">
+                            <h3>Scansiona</h3>
+                            <p>Scanner barcode</p>
+                        </div>
+                    </button>
+
+                    <button class="quick-action-card" id="view-clients">
+                        <div class="quick-action-icon bg-purple-100 text-purple-600">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="quick-action-content">
+                            <h3>Clienti</h3>
+                            <p>Gestisci clienti</p>
+                        </div>
+                    </button>
+
+                    <button class="quick-action-card" id="view-products">
+                        <div class="quick-action-icon bg-yellow-100 text-yellow-600">
+                            <i class="fas fa-box"></i>
+                        </div>
+                        <div class="quick-action-content">
+                            <h3>Prodotti</h3>
+                            <p>Catalogo prodotti</p>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Attività Recenti -->
+            <div class="recent-activity-section">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold text-gray-900">Attività Recenti</h2>
+                    <button class="btn btn-sm btn-secondary" id="view-all-activity">
+                        <i class="fas fa-list mr-1"></i>Vedi Tutto
+                    </button>
+                </div>
+
+                <div class="activity-list card">
+                    <div class="card-body p-0">
+                        <div id="recent-activities">
+                            <!-- Contenuto popolato dinamicamente -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- Template Sessione Corrente -->
+    <t t-name="raccolta.CurrentSession">
+        <div class="card-body">
+            <t t-if="session">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="font-semibold text-gray-900" t-esc="session.name"/>
+                        <p class="text-sm text-gray-600">
+                            Iniziata il <span t-esc="session.start_date"/>
+                        </p>
+                    </div>
+                    <div class="session-status">
+                        <span class="status-badge" t-att-class="session.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'">
+                            <i class="fas fa-circle mr-1"></i>
+                            <t t-esc="session.status_label"/>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="session-stats grid grid-cols-3 gap-4 mb-4">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-blue-600" t-esc="session.orders_count"/>
+                        <div class="text-xs text-gray-600">Ordini</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-green-600" t-esc="session.total_amount"/>
+                        <div class="text-xs text-gray-600">Totale</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-purple-600" t-esc="session.clients_count"/>
+                        <div class="text-xs text-gray-600">Clienti</div>
+                    </div>
+                </div>
+
+                <div class="session-actions flex gap-2">
+                    <button class="btn btn-primary flex-1" id="continue-session">
+                        <i class="fas fa-play mr-2"></i>Continua
+                    </button>
+                    <button class="btn btn-secondary" id="close-session">
+                        <i class="fas fa-stop mr-2"></i>Chiudi
+                    </button>
+                </div>
+            </t>
+            <t t-else="">
+                <div class="text-center py-8">
+                    <i class="fas fa-plus-circle text-4xl text-gray-300 mb-3"></i>
+                    <h3 class="font-semibold text-gray-700 mb-2">Nessuna Sessione Attiva</h3>
+                    <p class="text-gray-600 mb-4">Inizia una nuova sessione per raccogliere ordini</p>
+                    <button class="btn btn-primary" id="start-session">
+                        <i class="fas fa-plus mr-2"></i>Nuova Sessione
+                    </button>
+                </div>
+            </t>
+        </div>
+    </t>
+
+    <!-- Template Attività Recente -->
+    <t t-name="raccolta.ActivityItem">
+        <div class="activity-item">
+            <div class="activity-icon" t-att-class="activity.icon_class">
+                <i t-att-class="activity.icon"/>
+            </div>
+            <div class="activity-content">
+                <div class="activity-title" t-esc="activity.title"/>
+                <div class="activity-description" t-esc="activity.description"/>
+                <div class="activity-time" t-esc="activity.time"/>
+            </div>
+            <div class="activity-actions">
+                <t t-if="activity.action_url">
+                    <button class="btn btn-sm btn-secondary" t-att-data-url="activity.action_url">
+                        <i class="fas fa-external-link-alt"></i>
+                    </button>
+                </t>
+            </div>
+        </div>
+    </t>
+
+    <!-- Template Progress Bar -->
+    <t t-name="raccolta.ProgressBar">
+        <div class="progress-container">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-sm font-medium text-gray-700" t-esc="label"/>
+                <span class="text-sm text-gray-600" t-esc="percentage + '%'"/>
+            </div>
+            <div class="progress">
+                <div class="progress-bar" t-att-class="color_class" t-att-style="'width: ' + percentage + '%'"></div>
+            </div>
+        </div>
+    </t>
+
+    <!-- Template Empty State -->
+    <t t-name="raccolta.EmptyState">
+        <div class="empty-state text-center py-12">
+            <i t-att-class="icon" class="text-6xl text-gray-300 mb-4"></i>
+            <h3 class="text-lg font-semibold text-gray-700 mb-2" t-esc="title"/>
+            <p class="text-gray-600 mb-6 max-w-md mx-auto" t-esc="description"/>
+            <t t-if="action_text">
+                <button class="btn btn-primary" t-att-id="action_id">
+                    <i t-att-class="action_icon" class="mr-2"></i>
+                    <t t-esc="action_text"/>
+                </button>
+            </t>
+        </div>
+    </t>
+
+    <!-- Template Loading State -->
+    <t t-name="raccolta.LoadingState">
+        <div class="loading-state text-center py-8">
+            <div class="loading-spinner mx-auto mb-4"></div>
+            <p class="text-gray-600" t-esc="message or 'Caricamento in corso...'"/>
+        </div>
+    </t>
+
+</templates>

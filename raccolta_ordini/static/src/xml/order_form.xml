@@ -1,1 +1,483 @@
- 
+ <?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <!-- Form Creazione Ordine -->
+    <t t-name="raccolta.OrderForm">
+        <div class="order-form-container">
+            <!-- Header Form -->
+            <div class="order-form-header">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">
+                            <t t-if="order.id">Modifica Ordine</t>
+                            <t t-else="">Nuovo Ordine</t>
+                        </h1>
+                        <p class="text-gray-600 mt-1">
+                            <t t-if="order.name">Ordine: <span t-esc="order.name"/></t>
+                            <t t-else="">Compila i dati dell'ordine</t>
+                        </p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button class="btn btn-secondary" id="save-draft">
+                            <i class="fas fa-save mr-2"></i>Salva Bozza
+                        </button>
+                        <button class="btn btn-success" id="confirm-order">
+                            <i class="fas fa-check mr-2"></i>Conferma
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Steps -->
+            <div class="order-progress mb-6">
+                <div class="flex items-center justify-between">
+                    <div class="step" data-step="1" t-att-class="current_step >= 1 ? 'active' : ''">
+                        <div class="step-icon">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="step-label">Cliente</div>
+                    </div>
+                    <div class="step-connector"></div>
+                    <div class="step" data-step="2" t-att-class="current_step >= 2 ? 'active' : ''">
+                        <div class="step-icon">
+                            <i class="fas fa-box"></i>
+                        </div>
+                        <div class="step-label">Prodotti</div>
+                    </div>
+                    <div class="step-connector"></div>
+                    <div class="step" data-step="3" t-att-class="current_step >= 3 ? 'active' : ''">
+                        <div class="step-icon">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <div class="step-label">Dettagli</div>
+                    </div>
+                    <div class="step-connector"></div>
+                    <div class="step" data-step="4" t-att-class="current_step >= 4 ? 'active' : ''">
+                        <div class="step-icon">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <div class="step-label">Conferma</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Content -->
+            <form id="order-form" class="order-form">
+                <!-- Step 1: Cliente -->
+                <div class="form-step" data-step="1" t-att-class="current_step === 1 ? 'active' : 'hidden'">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="font-semibold">Selezione Cliente</h3>
+                        </div>
+                        <div class="card-body">
+                            <!-- Client Selector Container -->
+                            <div id="client-selector-container"></div>
+
+                            <!-- Client Info Display -->
+                            <div id="selected-client-info" class="mt-4 hidden">
+                                <!-- Popolato dinamicamente -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Prodotti -->
+                <div class="form-step" data-step="2" t-att-class="current_step === 2 ? 'active' : 'hidden'">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Lista Prodotti -->
+                        <div class="lg:col-span-2">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="font-semibold">Catalogo Prodotti</h3>
+                                </div>
+                                <div class="card-body">
+                                    <!-- Product List Container -->
+                                    <div id="product-list-container"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Carrello -->
+                        <div class="lg:col-span-1">
+                            <div class="card sticky top-4">
+                                <div class="card-header">
+                                    <h3 class="font-semibold">Carrello</h3>
+                                    <button type="button" class="btn btn-sm btn-secondary" id="clear-cart">
+                                        <i class="fas fa-trash mr-1"></i>Svuota
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    <div id="order-summary">
+                                        <!-- Popolato dinamicamente -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Dettagli -->
+                <div class="form-step" data-step="3" t-att-class="current_step === 3 ? 'active' : 'hidden'">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Informazioni Ordine -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="font-semibold">Informazioni Ordine</h3>
+                            </div>
+                            <div class="card-body space-y-4">
+                                <div class="form-group">
+                                    <label class="form-label" for="order-date">Data Ordine</label>
+                                    <input type="date" id="order-date" class="form-control" t-att-value="order.date_order"/>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="client-ref">Riferimento Cliente</label>
+                                    <input type="text" id="client-ref" class="form-control"
+                                           placeholder="Riferimento del cliente" t-att-value="order.client_order_ref"/>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="payment-terms">Termini di Pagamento</label>
+                                    <select id="payment-terms" class="form-select">
+                                        <option value="">Seleziona...</option>
+                                        <!-- Popolato dinamicamente -->
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="delivery-date">Data Consegna Richiesta</label>
+                                    <input type="date" id="delivery-date" class="form-control" t-att-value="order.commitment_date"/>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Note e Dettagli -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="font-semibold">Note e Dettagli</h3>
+                            </div>
+                            <div class="card-body space-y-4">
+                                <div class="form-group">
+                                    <label class="form-label" for="order-notes">Note Ordine</label>
+                                    <textarea id="order-notes" class="form-control" rows="3"
+                                              placeholder="Note interne sull'ordine" t-esc="order.note"></textarea>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="delivery-instructions">Istruzioni Consegna</label>
+                                    <textarea id="delivery-instructions" class="form-control" rows="3"
+                                              placeholder="Istruzioni per la consegna" t-esc="order.delivery_instructions"></textarea>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="general-notes">Note Generali</label>
+                                    <textarea id="general-notes" class="form-control" rows="2"
+                                              placeholder="Note visibili al cliente" t-esc="order.general_notes"></textarea>
+                                </div>
+
+                                <!-- Opzioni Aggiuntive -->
+                                <div class="space-y-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" id="create-delivery" class="form-check-input" checked/>
+                                        <label class="form-check-label" for="create-delivery">
+                                            Crea automaticamente picking di consegna
+                                        </label>
+                                    </div>
+
+                                    <div class="form-check">
+                                        <input type="checkbox" id="create-ddt" class="form-check-input" checked/>
+                                        <label class="form-check-label" for="create-ddt">
+                                            Genera DDT automatico
+                                        </label>
+                                    </div>
+
+                                    <div class="form-check">
+                                        <input type="checkbox" id="print-receipt" class="form-check-input"/>
+                                        <label class="form-check-label" for="print-receipt">
+                                            Stampa ricevuta immediata
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4: Conferma -->
+                <div class="form-step" data-step="4" t-att-class="current_step === 4 ? 'active' : 'hidden'">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="font-semibold">Riepilogo Ordine</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="order-summary-final">
+                                <!-- Popolato dinamicamente -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation Buttons -->
+                <div class="form-navigation mt-6">
+                    <div class="flex justify-between">
+                        <button type="button" class="btn btn-secondary" id="prev-step" t-att-class="current_step <= 1 ? 'hidden' : ''">
+                            <i class="fas fa-arrow-left mr-2"></i>Indietro
+                        </button>
+
+                        <div class="flex gap-3">
+                            <button type="button" class="btn btn-secondary" id="save-draft-bottom">
+                                <i class="fas fa-save mr-2"></i>Salva Bozza
+                            </button>
+
+                            <button type="button" class="btn btn-primary" id="next-step" t-att-class="current_step >= 4 ? 'hidden' : ''">
+                                Avanti<i class="fas fa-arrow-right ml-2"></i>
+                            </button>
+
+                            <button type="submit" class="btn btn-success" id="submit-order" t-att-class="current_step < 4 ? 'hidden' : ''">
+                                <i class="fas fa-check mr-2"></i>Conferma Ordine
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </t>
+
+    <!-- Template Riepilogo Carrello -->
+    <t t-name="raccolta.OrderSummary">
+        <div class="order-summary">
+            <t t-if="items and items.length > 0">
+                <div class="order-items space-y-3 mb-4">
+                    <t t-foreach="items" t-as="item">
+                        <div class="order-item">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1 mr-3">
+                                    <h4 class="font-medium text-sm" t-esc="item.name"/>
+                                    <p class="text-xs text-gray-600" t-esc="item.default_code"/>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span class="text-sm">Qtà: <span t-esc="item.quantity"/></span>
+                                        <span class="text-sm">€<span t-esc="item.price_unit"/></span>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-semibold text-sm">€<span t-esc="item.subtotal"/></div>
+                                    <button class="text-red-500 hover:text-red-700 text-xs"
+                                            t-att-data-product-id="item.id">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+
+                <div class="order-totals border-t pt-3">
+                    <div class="flex justify-between text-sm mb-1">
+                        <span>Subtotale:</span>
+                        <span>€<span t-esc="totals.subtotal"/></span>
+                    </div>
+                    <div class="flex justify-between text-sm mb-1" t-if="totals.tax_amount > 0">
+                        <span>IVA:</span>
+                        <span>€<span t-esc="totals.tax_amount"/></span>
+                    </div>
+                    <div class="flex justify-between font-semibold text-lg border-t pt-2">
+                        <span>Totale:</span>
+                        <span>€<span t-esc="totals.total"/></span>
+                    </div>
+                </div>
+            </t>
+            <t t-else="">
+                <div class="empty-cart text-center py-6">
+                    <i class="fas fa-shopping-cart text-3xl text-gray-300 mb-3"></i>
+                    <p class="text-gray-600">Carrello vuoto</p>
+                    <p class="text-sm text-gray-500">Aggiungi prodotti per continuare</p>
+                </div>
+            </t>
+        </div>
+    </t>
+
+    <!-- Template Riepilogo Finale -->
+    <t t-name="raccolta.OrderSummaryFinal">
+        <div class="final-summary">
+            <!-- Cliente -->
+            <div class="summary-section mb-6">
+                <h4 class="font-semibold text-gray-900 mb-3">Cliente</h4>
+                <div class="bg-gray-50 rounded p-4">
+                    <h5 class="font-medium" t-esc="client.name"/>
+                    <p class="text-sm text-gray-600" t-esc="client.email"/>
+                    <p class="text-sm text-gray-600" t-esc="client.phone"/>
+                    <t t-if="client.vat">
+                        <p class="text-sm text-gray-600">P.IVA: <span t-esc="client.vat"/></p>
+                    </t>
+                </div>
+            </div>
+
+            <!-- Prodotti -->
+            <div class="summary-section mb-6">
+                <h4 class="font-semibold text-gray-900 mb-3">Prodotti (<span t-esc="items.length"/>)</h4>
+                <div class="bg-gray-50 rounded p-4">
+                    <div class="space-y-3">
+                        <t t-foreach="items" t-as="item">
+                            <div class="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0">
+                                <div class="flex-1">
+                                    <h6 class="font-medium text-sm" t-esc="item.name"/>
+                                    <p class="text-xs text-gray-600" t-esc="item.default_code"/>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm">
+                                        <span t-esc="item.quantity"/> × €<span t-esc="item.price_unit"/>
+                                    </div>
+                                    <div class="font-semibold">€<span t-esc="item.subtotal"/></div>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dettagli Ordine -->
+            <div class="summary-section mb-6">
+                <h4 class="font-semibold text-gray-900 mb-3">Dettagli</h4>
+                <div class="bg-gray-50 rounded p-4 space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-600">Data Ordine:</span>
+                        <span t-esc="order.date_order"/>
+                    </div>
+                    <div class="flex justify-between text-sm" t-if="order.client_order_ref">
+                        <span class="text-gray-600">Rif. Cliente:</span>
+                        <span t-esc="order.client_order_ref"/>
+                    </div>
+                    <div class="flex justify-between text-sm" t-if="order.commitment_date">
+                        <span class="text-gray-600">Data Consegna:</span>
+                        <span t-esc="order.commitment_date"/>
+                    </div>
+                    <div class="flex justify-between text-sm" t-if="order.payment_term">
+                        <span class="text-gray-600">Pagamento:</span>
+                        <span t-esc="order.payment_term"/>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Note -->
+            <div class="summary-section mb-6" t-if="order.note or order.delivery_instructions">
+                <h4 class="font-semibold text-gray-900 mb-3">Note</h4>
+                <div class="bg-gray-50 rounded p-4 space-y-3">
+                    <div t-if="order.note">
+                        <h6 class="text-sm font-medium text-gray-700">Note Ordine:</h6>
+                        <p class="text-sm text-gray-600" t-esc="order.note"/>
+                    </div>
+                    <div t-if="order.delivery_instructions">
+                        <h6 class="text-sm font-medium text-gray-700">Istruzioni Consegna:</h6>
+                        <p class="text-sm text-gray-600" t-esc="order.delivery_instructions"/>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Totali Finali -->
+            <div class="summary-totals bg-blue-50 rounded-lg p-6">
+                <div class="space-y-3">
+                    <div class="flex justify-between text-lg">
+                        <span>Subtotale:</span>
+                        <span>€<span t-esc="totals.subtotal"/></span>
+                    </div>
+                    <div class="flex justify-between text-lg" t-if="totals.tax_amount > 0">
+                        <span>IVA:</span>
+                        <span>€<span t-esc="totals.tax_amount"/></span>
+                    </div>
+                    <div class="flex justify-between text-2xl font-bold text-blue-600 border-t border-blue-200 pt-3">
+                        <span>TOTALE:</span>
+                        <span>€<span t-esc="totals.total"/></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Opzioni Selezionate -->
+            <div class="summary-options mt-4">
+                <h5 class="font-medium text-gray-700 mb-2">Opzioni:</h5>
+                <div class="flex flex-wrap gap-2">
+                    <span class="badge bg-green-100 text-green-800" t-if="options.create_delivery">
+                        <i class="fas fa-truck mr-1"></i>Crea Picking
+                    </span>
+                    <span class="badge bg-blue-100 text-blue-800" t-if="options.create_ddt">
+                        <i class="fas fa-file-alt mr-1"></i>Genera DDT
+                    </span>
+                    <span class="badge bg-purple-100 text-purple-800" t-if="options.print_receipt">
+                        <i class="fas fa-print mr-1"></i>Stampa Ricevuta
+                    </span>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- Template Validazione Errori -->
+    <t t-name="raccolta.ValidationErrors">
+        <div class="validation-errors bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <div class="flex items-start">
+                <i class="fas fa-exclamation-triangle text-red-500 mt-1 mr-3"></i>
+                <div class="flex-1">
+                    <h4 class="font-semibold text-red-800 mb-2">Errori di Validazione</h4>
+                    <ul class="list-disc list-inside space-y-1">
+                        <t t-foreach="errors" t-as="error">
+                            <li class="text-red-700 text-sm" t-esc="error"/>
+                        </t>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- Template Prodotto Selezionato -->
+    <t t-name="raccolta.SelectedProduct">
+        <div class="selected-product bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="product-image">
+                        <t t-if="product.image">
+                            <img t-att-src="product.image" t-att-alt="product.name" class="w-12 h-12 rounded object-cover"/>
+                        </t>
+                        <t t-else="">
+                            <div class="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
+                                <i class="fas fa-box text-gray-400"></i>
+                            </div>
+                        </t>
+                    </div>
+                    <div class="product-info">
+                        <h4 class="font-medium text-sm" t-esc="product.name"/>
+                        <p class="text-xs text-gray-600" t-esc="product.default_code"/>
+                        <p class="text-sm font-semibold text-blue-600">€<span t-esc="product.list_price"/></p>
+                    </div>
+                </div>
+                <div class="quantity-section">
+                    <div class="quantity-controls">
+                        <button type="button" class="quantity-btn minus" t-att-data-product-id="product.id">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <input type="number" class="quantity-input" t-att-value="quantity" min="0" t-att-data-product-id="product.id"/>
+                        <button type="button" class="quantity-btn plus" t-att-data-product-id="product.id">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- Template Step Indicator -->
+    <t t-name="raccolta.StepIndicator">
+        <div class="step-indicator">
+            <div class="step-number" t-att-class="completed ? 'completed' : (active ? 'active' : '')">
+                <t t-if="completed">
+                    <i class="fas fa-check"></i>
+                </t>
+                <t t-else="">
+                    <span t-esc="step"/>
+                </t>
+            </div>
+            <div class="step-content">
+                <h4 class="step-title" t-esc="title"/>
+                <p class="step-description" t-esc="description"/>
+            </div>
+        </div>
+    </t>
+
+</templates>

@@ -1,1 +1,546 @@
- 
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <!-- Anteprima Ricevuta Principale -->
+    <t t-name="raccolta.ReceiptPreview">
+        <div class="receipt-preview-container">
+            <!-- Header -->
+            <div class="receipt-preview-header">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">Anteprima Ricevuta</h1>
+                        <p class="text-gray-600 mt-1">Controlla i dati prima della stampa</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button class="btn btn-secondary" id="edit-receipt">
+                            <i class="fas fa-edit mr-2"></i>Modifica
+                        </button>
+                        <button class="btn btn-primary" id="print-receipt">
+                            <i class="fas fa-print mr-2"></i>Stampa
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Opzioni Stampa -->
+            <div class="print-options mb-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="font-semibold">Opzioni di Stampa</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Formato -->
+                            <div class="option-group">
+                                <label class="form-label">Formato Ricevuta</label>
+                                <select id="receipt-format" class="form-select">
+                                    <option value="48mm">Termica 48mm</option>
+                                    <option value="80mm">Termica 80mm</option>
+                                    <option value="a4">A4 Standard</option>
+                                </select>
+                            </div>
+
+                            <!-- Tipo -->
+                            <div class="option-group">
+                                <label class="form-label">Tipo Documento</label>
+                                <select id="receipt-type" class="form-select">
+                                    <option value="receipt">Ricevuta</option>
+                                    <option value="order">Ordine</option>
+                                    <option value="ddt">DDT</option>
+                                    <option value="combined">Ordine + DDT</option>
+                                </select>
+                            </div>
+
+                            <!-- Copie -->
+                            <div class="option-group">
+                                <label class="form-label">Numero Copie</label>
+                                <select id="receipt-copies" class="form-select">
+                                    <option value="1">1 copia</option>
+                                    <option value="2">2 copie</option>
+                                    <option value="3">3 copie</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Opzioni Aggiuntive -->
+                        <div class="additional-options mt-4">
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div class="form-check">
+                                    <input type="checkbox" id="include-logo" class="form-check-input" checked/>
+                                    <label class="form-check-label" for="include-logo">
+                                        Include logo aziendale
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" id="include-barcode" class="form-check-input"/>
+                                    <label class="form-check-label" for="include-barcode">
+                                        Codice a barre
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" id="include-signature" class="form-check-input"/>
+                                    <label class="form-check-label" for="include-signature">
+                                        Spazio firma
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" id="auto-cut" class="form-check-input" checked/>
+                                    <label class="form-check-label" for="auto-cut">
+                                        Taglio automatico
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Anteprima -->
+            <div class="receipt-preview-content">
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    <!-- Ricevuta -->
+                    <div class="lg:col-span-3">
+                        <div class="receipt-preview-wrapper">
+                            <div class="receipt-container">
+                                <div id="receipt-content" class="receipt" t-att-class="receipt_format">
+                                    <!-- Contenuto ricevuta -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Controlli -->
+                    <div class="lg:col-span-1">
+                        <div class="preview-controls-sidebar">
+                            <!-- Zoom Controls -->
+                            <div class="control-section mb-4">
+                                <h4 class="font-semibold text-gray-900 mb-3">Zoom</h4>
+                                <div class="zoom-controls">
+                                    <button class="btn btn-sm btn-secondary" id="zoom-out">
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                    <span class="zoom-level px-3" id="zoom-level">100%</span>
+                                    <button class="btn btn-sm btn-secondary" id="zoom-in">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                                <button class="btn btn-sm btn-secondary w-full mt-2" id="zoom-fit">
+                                    <i class="fas fa-expand-arrows-alt mr-1"></i>Adatta
+                                </button>
+                            </div>
+
+                            <!-- Preview Actions -->
+                            <div class="control-section mb-4">
+                                <h4 class="font-semibold text-gray-900 mb-3">Azioni</h4>
+                                <div class="space-y-2">
+                                    <button class="btn btn-sm btn-secondary w-full" id="refresh-preview">
+                                        <i class="fas fa-sync mr-2"></i>Aggiorna
+                                    </button>
+                                    <button class="btn btn-sm btn-secondary w-full" id="download-pdf">
+                                        <i class="fas fa-file-pdf mr-2"></i>Scarica PDF
+                                    </button>
+                                    <button class="btn btn-sm btn-secondary w-full" id="save-template">
+                                        <i class="fas fa-save mr-2"></i>Salva Template
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Print Queue -->
+                            <div class="control-section mb-4">
+                                <h4 class="font-semibold text-gray-900 mb-3">Coda di Stampa</h4>
+                                <div class="print-queue" id="print-queue">
+                                    <!-- Popolato dinamicamente -->
+                                </div>
+                                <button class="btn btn-sm btn-warning w-full mt-2" id="clear-queue">
+                                    <i class="fas fa-trash mr-2"></i>Svuota Coda
+                                </button>
+                            </div>
+
+                            <!-- Info Stampante -->
+                            <div class="control-section">
+                                <h4 class="font-semibold text-gray-900 mb-3">Stampante</h4>
+                                <div class="printer-info">
+                                    <div class="printer-status mb-2">
+                                        <span class="status-badge" id="printer-status">
+                                            <i class="fas fa-circle mr-1"></i>
+                                            <span>Disconnessa</span>
+                                        </span>
+                                    </div>
+                                    <select id="printer-select" class="form-select text-sm mb-2">
+                                        <option value="">Seleziona stampante...</option>
+                                        <!-- Popolato dinamicamente -->
+                                    </select>
+                                    <button class="btn btn-sm btn-secondary w-full" id="connect-printer">
+                                        <i class="fas fa-link mr-2"></i>Connetti
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- Template Ricevuta 48mm -->
+    <t t-name="raccolta.Receipt48mm">
+        <div class="receipt receipt-48mm">
+            <!-- Header Azienda -->
+            <div class="receipt-header">
+                <div class="company-name" t-esc="company.name"/>
+                <div class="company-info" t-if="company.street" t-esc="company.street"/>
+                <div class="company-info" t-if="company.city">
+                    <span t-if="company.zip" t-esc="company.zip"/> <span t-esc="company.city"/>
+                </div>
+                <div class="company-vat" t-if="company.vat">P.IVA: <span t-esc="company.vat"/></div>
+                <div class="company-info" t-if="company.phone">Tel: <span t-esc="company.phone"/></div>
+            </div>
+
+            <div class="receipt-separator line"></div>
+
+            <!-- Info Documento -->
+            <div class="document-info">
+                <div class="document-number receipt-bold">
+                    <t t-if="document.type === 'order'">ORDINE: </t>
+                    <t t-elif="document.type === 'ddt'">DDT: </t>
+                    <t t-else="">RICEVUTA: </t>
+                    <span t-esc="document.name"/>
+                </div>
+                <div class="document-date">Data: <span t-esc="document.date"/></div>
+                <div class="document-agent" t-if="document.agent">Agente: <span t-esc="document.agent"/></div>
+            </div>
+
+            <!-- Cliente -->
+            <div class="customer-section" t-if="customer">
+                <div class="receipt-separator dashed"></div>
+                <div class="customer-title receipt-bold">CLIENTE:</div>
+                <div class="customer-name" t-esc="customer.name"/>
+                <div class="customer-info" t-if="customer.street" t-esc="customer.street"/>
+                <div class="customer-info" t-if="customer.city">
+                    <span t-if="customer.zip" t-esc="customer.zip"/> <span t-esc="customer.city"/>
+                </div>
+                <div class="customer-info" t-if="customer.vat">P.IVA: <span t-esc="customer.vat"/></div>
+                <div class="customer-info" t-if="customer.phone">Tel: <span t-esc="customer.phone"/></div>
+            </div>
+
+            <div class="receipt-separator line"></div>
+
+            <!-- Prodotti -->
+            <div class="products-section">
+                <table class="products-table">
+                    <thead>
+                        <tr>
+                            <th>DESC</th>
+                            <th>QTA</th>
+                            <th>TOT</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="products" t-as="product">
+                            <tr>
+                                <td class="product-description" t-esc="product.name"/>
+                                <td class="qty" t-esc="product.quantity"/>
+                                <td class="total">€<span t-esc="product.subtotal"/></td>
+                            </tr>
+                            <tr t-if="product.default_code">
+                                <td colspan="3" class="product-code">Cod: <span t-esc="product.default_code"/></td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Totali -->
+            <div class="totals-section">
+                <div class="receipt-separator line"></div>
+                <div class="total-row subtotal" t-if="totals.subtotal">
+                    <span class="total-label">Subtotale:</span>
+                    <span class="total-value">€<span t-esc="totals.subtotal"/></span>
+                </div>
+                <div class="total-row" t-if="totals.tax">
+                    <span class="total-label">IVA:</span>
+                    <span class="total-value">€<span t-esc="totals.tax"/></span>
+                </div>
+                <div class="total-row grand-total">
+                    <span class="total-label receipt-bold">TOTALE:</span>
+                    <span class="total-value receipt-bold">€<span t-esc="totals.total"/></span>
+                </div>
+            </div>
+
+            <!-- DDT Info -->
+            <div class="ddt-section" t-if="ddt">
+                <div class="receipt-separator line"></div>
+                <div class="ddt-title receipt-bold">DDT: <span t-esc="ddt.name"/></div>
+                <div class="ddt-info" t-if="ddt.date">Data DDT: <span t-esc="ddt.date"/></div>
+                <div class="ddt-info" t-if="ddt.transport_condition">Trasporto: <span t-esc="ddt.transport_condition"/></div>
+                <div class="ddt-info" t-if="ddt.goods_appearance">Aspetto: <span t-esc="ddt.goods_appearance"/></div>
+            </div>
+
+            <!-- Barcode -->
+            <div class="receipt-barcode receipt-center" t-if="options.include_barcode">
+                <div class="barcode-placeholder">||||| |||| |||||</div>
+                <div class="barcode-text" t-esc="document.name"/>
+            </div>
+
+            <!-- Footer -->
+            <div class="receipt-footer">
+                <div class="receipt-separator dashed"></div>
+                <div class="footer-thanks receipt-center receipt-bold">Grazie per la fiducia!</div>
+                <div class="footer-timestamp receipt-center">
+                    Stampato: <span t-esc="document.print_time"/>
+                </div>
+            </div>
+
+            <!-- Firma -->
+            <div class="signature-section receipt-center" t-if="options.include_signature">
+                <div class="signature-line"></div>
+                <div class="signature-label">Firma Cliente</div>
+            </div>
+        </div>
+    </t>
+
+    <!-- Template Ricevuta 80mm -->
+    <t t-name="raccolta.Receipt80mm">
+        <div class="receipt receipt-80mm">
+            <!-- Header più dettagliato per 80mm -->
+            <div class="receipt-header">
+                <div class="company-name receipt-large receipt-center" t-esc="company.name"/>
+                <div class="company-info receipt-center" t-if="company.street" t-esc="company.street"/>
+                <div class="company-info receipt-center" t-if="company.city">
+                    <span t-if="company.zip" t-esc="company.zip"/> <span t-esc="company.city"/>
+                </div>
+                <div class="company-vat receipt-center" t-if="company.vat">P.IVA: <span t-esc="company.vat"/></div>
+                <div class="company-info receipt-center" t-if="company.phone">Tel: <span t-esc="company.phone"/></div>
+                <div class="company-info receipt-center" t-if="company.email" t-esc="company.email"/>
+            </div>
+
+            <div class="receipt-separator double"></div>
+
+            <!-- Info Documento -->
+            <div class="document-info">
+                <div class="document-number receipt-bold receipt-large">
+                    <t t-if="document.type === 'order'">ORDINE N. </t>
+                    <t t-elif="document.type === 'ddt'">DDT N. </t>
+                    <t t-else="">RICEVUTA N. </t>
+                    <span t-esc="document.name"/>
+                </div>
+                <div class="document-date">Data: <span t-esc="document.date"/></div>
+                <div class="document-agent" t-if="document.agent">Agente: <span t-esc="document.agent"/></div>
+                <div class="document-date" t-if="document.client_ref">Rif. Cliente: <span t-esc="document.client_ref"/></div>
+            </div>
+
+            <!-- Cliente -->
+            <div class="customer-section" t-if="customer">
+                <div class="receipt-separator line"></div>
+                <div class="customer-title receipt-bold">CLIENTE:</div>
+                <div class="customer-name receipt-bold" t-esc="customer.name"/>
+                <div class="customer-info" t-if="customer.street" t-esc="customer.street"/>
+                <div class="customer-info" t-if="customer.city">
+                    <span t-if="customer.zip" t-esc="customer.zip"/> <span t-esc="customer.city"/>
+                </div>
+                <div class="customer-info" t-if="customer.state" t-esc="customer.state"/>
+                <div class="customer-info" t-if="customer.vat">P.IVA: <span t-esc="customer.vat"/></div>
+                <div class="customer-info" t-if="customer.phone">Tel: <span t-esc="customer.phone"/></div>
+                <div class="customer-info" t-if="customer.email">Email: <span t-esc="customer.email"/></div>
+            </div>
+
+            <div class="receipt-separator line"></div>
+
+            <!-- Prodotti con più dettagli -->
+            <div class="products-section">
+                <table class="products-table">
+                    <thead>
+                        <tr>
+                            <th>DESCRIZIONE</th>
+                            <th>QTA</th>
+                            <th>PREZZO</th>
+                            <th>TOTALE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="products" t-as="product">
+                            <tr>
+                                <td class="product-description" t-esc="product.name"/>
+                                <td class="qty" t-esc="product.quantity"/>
+                                <td class="price">€<span t-esc="product.price_unit"/></td>
+                                <td class="total">€<span t-esc="product.subtotal"/></td>
+                            </tr>
+                            <tr t-if="product.default_code">
+                                <td colspan="4" class="product-code">Codice: <span t-esc="product.default_code"/></td>
+                            </tr>
+                            <tr t-if="product.notes">
+                                <td colspan="4" class="product-notes" t-esc="product.notes"/>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Totali dettagliati -->
+            <div class="totals-section">
+                <div class="receipt-separator line"></div>
+                <div class="total-row subtotal" t-if="totals.subtotal">
+                    <span class="total-label">Subtotale:</span>
+                    <span class="total-value">€<span t-esc="totals.subtotal"/></span>
+                </div>
+                <div class="total-row" t-if="totals.discount">
+                    <span class="total-label">Sconto:</span>
+                    <span class="total-value">-€<span t-esc="totals.discount"/></span>
+                </div>
+                <div class="total-row" t-if="totals.tax">
+                    <span class="total-label">IVA (<span t-esc="totals.tax_rate"/>%):</span>
+                    <span class="total-value">€<span t-esc="totals.tax"/></span>
+                </div>
+                <div class="total-row grand-total">
+                    <span class="total-label receipt-bold receipt-large">TOTALE GENERALE:</span>
+                    <span class="total-value receipt-bold receipt-large">€<span t-esc="totals.total"/></span>
+                </div>
+            </div>
+
+            <!-- DDT Dettagliato -->
+            <div class="ddt-section" t-if="ddt">
+                <div class="receipt-separator line"></div>
+                <div class="ddt-title receipt-bold">DOCUMENTO DI TRASPORTO</div>
+                <div class="ddt-info">DDT N.: <span t-esc="ddt.name"/></div>
+                <div class="ddt-info" t-if="ddt.date">Data DDT: <span t-esc="ddt.date"/></div>
+                <div class="ddt-details">
+                    <div class="ddt-info" t-if="ddt.transport_condition">Condizioni Trasporto: <span t-esc="ddt.transport_condition"/></div>
+                    <div class="ddt-info" t-if="ddt.goods_appearance">Aspetto Beni: <span t-esc="ddt.goods_appearance"/></div>
+                    <div class="ddt-info" t-if="ddt.transport_reason">Causale Trasporto: <span t-esc="ddt.transport_reason"/></div>
+                    <div class="ddt-info" t-if="ddt.carrier">Vettore: <span t-esc="ddt.carrier"/></div>
+                </div>
+            </div>
+
+            <!-- Note -->
+            <div class="notes-section" t-if="document.note">
+                <div class="receipt-separator dashed"></div>
+                <div class="receipt-bold">NOTE:</div>
+                <div class="receipt-small" t-esc="document.note"/>
+            </div>
+
+            <!-- Barcode e QR Code -->
+            <div class="receipt-barcode receipt-center" t-if="options.include_barcode">
+                <div class="barcode-placeholder">||||| ||||| ||||| |||||</div>
+                <div class="barcode-text" t-esc="document.name"/>
+            </div>
+
+            <!-- Footer -->
+            <div class="receipt-footer">
+                <div class="receipt-separator dashed"></div>
+                <div class="footer-message receipt-center receipt-italic">
+                    La ringraziamo per aver scelto i nostri servizi
+                </div>
+                <div class="footer-thanks receipt-center receipt-bold">
+                    Grazie per la fiducia!
+                </div>
+                <div class="footer-timestamp receipt-center receipt-small">
+                    Documento generato il <span t-esc="document.print_time"/>
+                </div>
+            </div>
+
+            <!-- Firma -->
+            <div class="signature-section receipt-center" t-if="options.include_signature">
+                <div class="receipt-separator line"></div>
+                <div class="signature-line"></div>
+                <div class="signature-label">Firma per Ricevuta</div>
+            </div>
+        </div>
+    </t>
+
+    <!-- Template Item Coda Stampa -->
+    <t t-name="raccolta.PrintQueueItem">
+        <div class="print-queue-item" t-att-data-queue-id="item.id">
+            <div class="flex items-center justify-between p-2 border rounded mb-2">
+                <div class="flex items-center gap-2">
+                    <div class="queue-status" t-att-class="item.status">
+                        <i t-att-class="item.status_icon"></i>
+                    </div>
+                    <div class="queue-info">
+                        <div class="text-sm font-medium" t-esc="item.document_name"/>
+                        <div class="text-xs text-gray-500" t-esc="item.format + ' - ' + item.copies + ' copie'"/>
+                    </div>
+                </div>
+                <div class="queue-actions">
+                    <button class="btn btn-xs btn-secondary" t-att-data-queue-id="item.id" data-action="remove">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- Template Opzione Stampante -->
+    <t t-name="raccolta.PrinterOption">
+        <option t-att-value="printer.id" t-esc="printer.name"/>
+    </t>
+
+    <!-- Template Modalità Stampa -->
+    <t t-name="raccolta.PrintModeSelector">
+        <div class="print-mode-selector">
+            <div class="mode-options grid grid-cols-2 gap-3">
+                <button class="mode-option" data-mode="thermal" t-att-class="selected_mode === 'thermal' ? 'active' : ''">
+                    <i class="fas fa-receipt text-2xl mb-2"></i>
+                    <div class="text-sm font-medium">Termica</div>
+                    <div class="text-xs text-gray-500">48mm/80mm</div>
+                </button>
+                <button class="mode-option" data-mode="standard" t-att-class="selected_mode === 'standard' ? 'active' : ''">
+                    <i class="fas fa-print text-2xl mb-2"></i>
+                    <div class="text-sm font-medium">Standard</div>
+                    <div class="text-xs text-gray-500">A4/Letter</div>
+                </button>
+            </div>
+        </div>
+    </t>
+
+    <!-- Template Anteprima PDF -->
+    <t t-name="raccolta.PDFPreview">
+        <div class="pdf-preview-container">
+            <div class="pdf-viewer" id="pdf-viewer">
+                <iframe t-att-src="pdf_url" class="w-full h-96 border rounded"></iframe>
+            </div>
+            <div class="pdf-controls mt-3 flex justify-center gap-2">
+                <button class="btn btn-sm btn-secondary" id="pdf-download">
+                    <i class="fas fa-download mr-1"></i>Download
+                </button>
+                <button class="btn btn-sm btn-primary" id="pdf-print">
+                    <i class="fas fa-print mr-1"></i>Stampa
+                </button>
+            </div>
+        </div>
+    </t>
+
+    <!-- Template Errore Stampa -->
+    <t t-name="raccolta.PrintError">
+        <div class="print-error bg-red-50 border border-red-200 rounded-lg p-4">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-exclamation-triangle text-red-500 text-xl mt-1"></i>
+                <div>
+                    <h4 class="font-semibold text-red-800">Errore di Stampa</h4>
+                    <p class="text-red-700 mt-1" t-esc="error.message"/>
+                    <div class="mt-3 flex gap-2">
+                        <button class="btn btn-sm btn-red-600" id="retry-print">
+                            <i class="fas fa-redo mr-1"></i>Riprova
+                        </button>
+                        <button class="btn btn-sm btn-secondary" id="dismiss-error">
+                            Ignora
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- Template Conferma Stampa -->
+    <t t-name="raccolta.PrintConfirmation">
+        <div class="print-confirmation bg-green-50 border border-green-200 rounded-lg p-4">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-check-circle text-green-500 text-xl"></i>
+                <div>
+                    <h4 class="font-semibold text-green-800">Stampa Completata</h4>
+                    <p class="text-green-700">La ricevuta è stata stampata con successo</p>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>

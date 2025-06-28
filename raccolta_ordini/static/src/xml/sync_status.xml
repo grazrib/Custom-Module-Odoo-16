@@ -1,1 +1,509 @@
- 
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <!-- Schermata Sincronizzazione Principale -->
+    <t t-name="raccolta.SyncStatus">
+        <div class="sync-status-container">
+            <!-- Header -->
+            <div class="sync-header">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">Sincronizzazione</h1>
+                        <p class="text-gray-600 mt-1">Gestione dati offline e sincronizzazione con Odoo</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button class="btn btn-secondary" id="refresh-status">
+                            <i class="fas fa-sync mr-2"></i>Aggiorna
+                        </button>
+                        <button class="btn btn-primary" id="start-sync" t-att-disabled="!can_sync">
+                            <i class="fas fa-cloud-upload-alt mr-2"></i>Sincronizza Ora
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Connessione -->
+            <div class="connection-status-card card mb-6">
+                <div class="card-body">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div class="connection-indicator" t-att-class="connection.status">
+                                <div class="status-dot"></div>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-lg" t-esc="connection.title"/>
+                                <p class="text-sm text-gray-600" t-esc="connection.description"/>
+                                <p class="text-xs text-gray-500 mt-1" t-if="connection.last_check">
+                                    Ultimo controllo: <span t-esc="connection.last_check"/>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="connection-actions">
+                            <button class="btn btn-sm btn-secondary" id="test-connection">
+                                <i class="fas fa-wifi mr-1"></i>Test
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Sincronizzazione Attiva -->
+            <div class="sync-progress-card card mb-6" id="sync-progress" t-att-class="sync_active ? '' : 'hidden'">
+                <div class="card-header">
+                    <h3 class="font-semibold">Sincronizzazione in Corso</h3>
+                    <button class="btn btn-sm btn-secondary" id="cancel-sync">
+                        <i class="fas fa-times mr-1"></i>Annulla
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="sync-progress-content">
+                        <div class="progress-info mb-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm font-medium" id="sync-step-label">Preparazione...</span>
+                                <span class="text-sm text-gray-600" id="sync-percentage">0%</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar" id="sync-progress-bar" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <div class="sync-details">
+                            <div class="grid grid-cols-3 gap-4 text-center">
+                                <div>
+                                    <div class="text-2xl font-bold text-blue-600" id="sync-orders-count">0</div>
+                                    <div class="text-xs text-gray-600">Ordini</div>
+                                </div>
+                                <div>
+                                    <div class="text-2xl font-bold text-green-600" id="sync-success-count">0</div>
+                                    <div class="text-xs text-gray-600">Sincronizzati</div>
+                                </div>
+                                <div>
+                                    <div class="text-2xl font-bold text-red-600" id="sync-error-count">0</div>
+                                    <div class="text-xs text-gray-600">Errori</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="sync-log mt-4">
+                            <div class="log-container" id="sync-log">
+                                <!-- Log popolato dinamicamente -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistiche Sincronizzazione -->
+            <div class="sync-stats-grid mb-6">
+                <div class="sync-stat-card">
+                    <div class="stat-icon bg-blue-100 text-blue-600">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" t-esc="stats.pending_documents"/>
+                        <div class="stat-label">Documenti in Attesa</div>
+                        <div class="stat-detail" t-esc="stats.pending_size"/>
+                    </div>
+                </div>
+
+                <div class="sync-stat-card">
+                    <div class="stat-icon bg-green-100 text-green-600">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" t-esc="stats.synced_documents"/>
+                        <div class="stat-label">Sincronizzati</div>
+                        <div class="stat-detail" t-esc="stats.last_sync"/>
+                    </div>
+                </div>
+
+                <div class="sync-stat-card">
+                    <div class="stat-icon bg-red-100 text-red-600">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" t-esc="stats.failed_documents"/>
+                        <div class="stat-label">Errori</div>
+                        <div class="stat-detail" t-esc="stats.error_rate"/>
+                    </div>
+                </div>
+
+                <div class="sync-stat-card">
+                    <div class="stat-icon bg-purple-100 text-purple-600">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" t-esc="stats.storage_used"/>
+                        <div class="stat-label">Storage Offline</div>
+                        <div class="stat-detail" t-esc="stats.storage_percentage"/>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dettagli per Tipo Documento -->
+            <div class="document-types-section mb-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Stato per Tipo Documento</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Ordini -->
+                    <div class="document-type-card">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="font-semibold flex items-center">
+                                        <i class="fas fa-shopping-cart mr-2 text-blue-600"></i>
+                                        Ordini
+                                    </h3>
+                                    <span class="badge bg-blue-100 text-blue-800" t-esc="documents.orders.total"/>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="document-stats">
+                                    <div class="flex justify-between text-sm mb-2">
+                                        <span>Sincronizzati:</span>
+                                        <span class="font-semibold text-green-600" t-esc="documents.orders.synced"/>
+                                    </div>
+                                    <div class="flex justify-between text-sm mb-2">
+                                        <span>In attesa:</span>
+                                        <span class="font-semibold text-yellow-600" t-esc="documents.orders.pending"/>
+                                    </div>
+                                    <div class="flex justify-between text-sm">
+                                        <span>Errori:</span>
+                                        <span class="font-semibold text-red-600" t-esc="documents.orders.errors"/>
+                                    </div>
+                                </div>
+                                <div class="progress mt-3">
+                                    <div class="progress-bar bg-blue-500" t-att-style="'width: ' + documents.orders.progress + '%'"></div>
+                                </div>
+                                <div class="text-xs text-center text-gray-600 mt-1" t-esc="documents.orders.progress + '%'"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Picking -->
+                    <div class="document-type-card">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="font-semibold flex items-center">
+                                        <i class="fas fa-truck mr-2 text-green-600"></i>
+                                        Picking
+                                    </h3>
+                                    <span class="badge bg-green-100 text-green-800" t-esc="documents.pickings.total"/>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="document-stats">
+                                    <div class="flex justify-between text-sm mb-2">
+                                        <span>Sincronizzati:</span>
+                                        <span class="font-semibold text-green-600" t-esc="documents.pickings.synced"/>
+                                    </div>
+                                    <div class="flex justify-between text-sm mb-2">
+                                        <span>In attesa:</span>
+                                        <span class="font-semibold text-yellow-600" t-esc="documents.pickings.pending"/>
+                                    </div>
+                                    <div class="flex justify-between text-sm">
+                                        <span>Errori:</span>
+                                        <span class="font-semibold text-red-600" t-esc="documents.pickings.errors"/>
+                                    </div>
+                                </div>
+                                <div class="progress mt-3">
+                                    <div class="progress-bar bg-green-500" t-att-style="'width: ' + documents.pickings.progress + '%'"></div>
+                                </div>
+                                <div class="text-xs text-center text-gray-600 mt-1" t-esc="documents.pickings.progress + '%'"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DDT -->
+                    <div class="document-type-card">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="font-semibold flex items-center">
+                                        <i class="fas fa-file-alt mr-2 text-purple-600"></i>
+                                        DDT
+                                    </h3>
+                                    <span class="badge bg-purple-100 text-purple-800" t-esc="documents.ddts.total"/>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="document-stats">
+                                    <div class="flex justify-between text-sm mb-2">
+                                        <span>Sincronizzati:</span>
+                                        <span class="font-semibold text-green-600" t-esc="documents.ddts.synced"/>
+                                    </div>
+                                    <div class="flex justify-between text-sm mb-2">
+                                        <span>In attesa:</span>
+                                        <span class="font-semibold text-yellow-600" t-esc="documents.ddts.pending"/>
+                                    </div>
+                                    <div class="flex justify-between text-sm">
+                                        <span>Errori:</span>
+                                        <span class="font-semibold text-red-600" t-esc="documents.ddts.errors"/>
+                                    </div>
+                                </div>
+                                <div class="progress mt-3">
+                                    <div class="progress-bar bg-purple-500" t-att-style="'width: ' + documents.ddts.progress + '%'"></div>
+                                </div>
+                                <div class="text-xs text-center text-gray-600 mt-1" t-esc="documents.ddts.progress + '%'"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista Documenti in Attesa -->
+            <div class="pending-documents-section mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold text-gray-900">Documenti in Attesa</h2>
+                    <div class="flex gap-2">
+                        <button class="btn btn-sm btn-secondary" id="retry-failed">
+                            <i class="fas fa-redo mr-1"></i>Riprova Errori
+                        </button>
+                        <button class="btn btn-sm btn-warning" id="clear-failed">
+                            <i class="fas fa-trash mr-1"></i>Pulisci Errori
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body p-0">
+                        <div class="pending-documents-list" id="pending-documents">
+                            <!-- Popolato dinamicamente -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Storico Sincronizzazioni -->
+            <div class="sync-history-section">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold text-gray-900">Storico Sincronizzazioni</h2>
+                    <button class="btn btn-sm btn-secondary" id="clear-history">
+                        <i class="fas fa-trash mr-1"></i>Pulisci Storico
+                    </button>
+                </div>
+
+                <div class="card">
+                    <div class="card-body p-0">
+                        <div class="sync-history-list" id="sync-history">
+                            <!-- Popolato dinamicamente -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- Template Documento in Attesa -->
+    <t t-name="raccolta.PendingDocument">
+        <div class="pending-document-item" t-att-data-document-id="document.id" t-att-data-document-type="document.type">
+            <div class="flex items-center justify-between p-4 border-b last:border-b-0 hover:bg-gray-50">
+                <div class="flex items-center gap-4">
+                    <!-- Icona Tipo -->
+                    <div class="document-type-icon" t-att-class="document.icon_class">
+                        <i t-att-class="document.icon"></i>
+                    </div>
+
+                    <!-- Info Documento -->
+                    <div class="flex-1">
+                        <h4 class="font-medium text-gray-900" t-esc="document.name"/>
+                        <p class="text-sm text-gray-600" t-esc="document.description"/>
+                        <div class="flex items-center gap-3 mt-1">
+                            <span class="text-xs text-gray-500">
+                                <i class="fas fa-calendar mr-1"></i>
+                                <span t-esc="document.created_at"/>
+                            </span>
+                            <span class="text-xs text-gray-500" t-if="document.size">
+                                <i class="fas fa-weight mr-1"></i>
+                                <span t-esc="document.size"/>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Status -->
+                    <div class="document-status">
+                        <span class="status-badge" t-att-class="document.status_class">
+                            <i t-att-class="document.status_icon" class="mr-1"></i>
+                            <span t-esc="document.status_text"/>
+                        </span>
+                        <div class="text-xs text-gray-500 mt-1" t-if="document.error_message">
+                            <span t-esc="document.error_message"/>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Azioni -->
+                <div class="document-actions flex gap-2">
+                    <button class="btn btn-sm btn-secondary" t-att-data-document-id="document.id" data-action="view">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-sm btn-primary" t-att-data-document-id="document.id" data-action="retry"
+                            t-att-class="document.status === 'error' ? '' : 'hidden'">
+                        <i class="fas fa-redo"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" t-att-data-document-id="document.id" data-action="remove">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- Template Storia Sincronizzazione -->
+    <t t-name="raccolta.SyncHistoryItem">
+        <div class="sync-history-item" t-att-data-sync-id="sync.id">
+            <div class="flex items-center justify-between p-4 border-b last:border-b-0">
+                <div class="flex items-center gap-4">
+                    <!-- Status Icon -->
+                    <div class="sync-status-icon" t-att-class="sync.status_class">
+                        <i t-att-class="sync.status_icon"></i>
+                    </div>
+
+                    <!-- Sync Info -->
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-1">
+                            <h4 class="font-medium text-gray-900" t-esc="sync.title"/>
+                            <span class="status-badge text-xs" t-att-class="sync.status_badge_class" t-esc="sync.status_text"/>
+                        </div>
+                        <p class="text-sm text-gray-600" t-esc="sync.description"/>
+                        <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                            <span>
+                                <i class="fas fa-clock mr-1"></i>
+                                <span t-esc="sync.started_at"/>
+                            </span>
+                            <span>
+                                <i class="fas fa-stopwatch mr-1"></i>
+                                <span t-esc="sync.duration"/>
+                            </span>
+                            <span t-if="sync.documents_count">
+                                <i class="fas fa-file mr-1"></i>
+                                <span t-esc="sync.documents_count"/> documenti
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Statistiche -->
+                    <div class="sync-stats-mini">
+                        <div class="grid grid-cols-3 gap-3 text-center">
+                            <div>
+                                <div class="text-lg font-bold text-green-600" t-esc="sync.success_count"/>
+                                <div class="text-xs text-gray-600">OK</div>
+                            </div>
+                            <div>
+                                <div class="text-lg font-bold text-red-600" t-esc="sync.error_count"/>
+                                <div class="text-xs text-gray-600">Errori</div>
+                            </div>
+                            <div>
+                                <div class="text-lg font-bold text-blue-600" t-esc="sync.total_count"/>
+                                <div class="text-xs text-gray-600">Totali</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Azioni -->
+                <div class="sync-actions">
+                    <button class="btn btn-sm btn-secondary" t-att-data-sync-id="sync.id" data-action="view-details">
+                        <i class="fas fa-info-circle"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- Template Log Sincronizzazione -->
+    <t t-name="raccolta.SyncLogEntry">
+        <div class="sync-log-entry" t-att-class="entry.level">
+            <div class="log-timestamp" t-esc="entry.timestamp"/>
+            <div class="log-level">
+                <span class="log-level-badge" t-att-class="entry.level_class">
+                    <i t-att-class="entry.level_icon"></i>
+                    <span t-esc="entry.level_text"/>
+                </span>
+            </div>
+            <div class="log-message" t-esc="entry.message"/>
+        </div>
+    </t>
+
+    <!-- Template Conflitto Sincronizzazione -->
+    <t t-name="raccolta.SyncConflict">
+        <div class="sync-conflict-modal">
+            <div class="modal-overlay">
+                <div class="modal">
+                    <div class="modal-header">
+                        <h2 class="modal-title">Conflitto Rilevato</h2>
+                        <button class="modal-close" id="close-conflict-modal">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="conflict-info mb-4">
+                            <div class="flex items-start gap-3">
+                                <i class="fas fa-exclamation-triangle text-yellow-500 text-xl mt-1"></i>
+                                <div>
+                                    <h3 class="font-semibold text-gray-900" t-esc="conflict.title"/>
+                                    <p class="text-gray-600 mt-1" t-esc="conflict.description"/>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="conflict-details">
+                            <div class="grid grid-cols-2 gap-4">
+                                <!-- Versione Locale -->
+                                <div class="conflict-version">
+                                    <h4 class="font-medium text-gray-900 mb-3">Versione Locale</h4>
+                                    <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                                        <div class="space-y-2 text-sm">
+                                            <div><strong>Nome:</strong> <span t-esc="conflict.local.name"/></div>
+                                            <div><strong>Modificato:</strong> <span t-esc="conflict.local.modified_at"/></div>
+                                            <div><strong>Dati:</strong> <span t-esc="conflict.local.data_summary"/></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Versione Server -->
+                                <div class="conflict-version">
+                                    <h4 class="font-medium text-gray-900 mb-3">Versione Server</h4>
+                                    <div class="bg-green-50 border border-green-200 rounded p-3">
+                                        <div class="space-y-2 text-sm">
+                                            <div><strong>Nome:</strong> <span t-esc="conflict.server.name"/></div>
+                                            <div><strong>Modificato:</strong> <span t-esc="conflict.server.modified_at"/></div>
+                                            <div><strong>Dati:</strong> <span t-esc="conflict.server.data_summary"/></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <div class="flex gap-3 w-full">
+                            <button class="btn btn-secondary flex-1" id="keep-local" t-att-data-conflict-id="conflict.id">
+                                <i class="fas fa-mobile-alt mr-2"></i>Mantieni Locale
+                            </button>
+                            <button class="btn btn-primary flex-1" id="use-server" t-att-data-conflict-id="conflict.id">
+                                <i class="fas fa-cloud mr-2"></i>Usa Server
+                            </button>
+                            <button class="btn btn-warning flex-1" id="merge-versions" t-att-data-conflict-id="conflict.id">
+                                <i class="fas fa-code-branch mr-2"></i>Unisci
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- Template Indicatore Connessione -->
+    <t t-name="raccolta.ConnectionIndicator">
+        <div class="connection-indicator-widget" t-att-class="status">
+            <div class="indicator-dot"></div>
+            <div class="indicator-text">
+                <div class="status-text" t-esc="status_text"/>
+                <div class="status-detail" t-esc="detail_text"/>
+            </div>
+        </div>
+    </t>
+
+</templates>

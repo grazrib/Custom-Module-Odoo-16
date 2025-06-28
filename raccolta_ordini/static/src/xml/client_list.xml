@@ -1,1 +1,397 @@
- 
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <!-- Lista Clienti Principale -->
+    <t t-name="raccolta.ClientList">
+        <div class="client-list-container">
+            <!-- Header -->
+            <div class="client-list-header">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">Clienti</h1>
+                        <p class="text-gray-600 mt-1">Gestione anagrafica clienti offline</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button class="btn btn-secondary" id="sync-clients">
+                            <i class="fas fa-sync mr-2"></i>Sincronizza
+                        </button>
+                        <button class="btn btn-primary" id="add-client">
+                            <i class="fas fa-plus mr-2"></i>Nuovo Cliente
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtri e Ricerca -->
+            <div class="client-filters mb-6">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <!-- Ricerca -->
+                            <div class="md:col-span-2">
+                                <div class="search-input">
+                                    <i class="fas fa-search search-icon"></i>
+                                    <input type="text" id="client-search" class="form-control"
+                                           placeholder="Cerca per nome, email, città..."/>
+                                </div>
+                            </div>
+
+                            <!-- Filtro Categoria -->
+                            <div>
+                                <select id="client-category-filter" class="form-select">
+                                    <option value="">Tutte le categorie</option>
+                                    <option value="customer">Clienti</option>
+                                    <option value="supplier">Fornitori</option>
+                                    <option value="company">Aziende</option>
+                                    <option value="person">Privati</option>
+                                </select>
+                            </div>
+
+                            <!-- Filtro Stato -->
+                            <div>
+                                <select id="client-status-filter" class="form-select">
+                                    <option value="">Tutti gli stati</option>
+                                    <option value="active">Attivi</option>
+                                    <option value="inactive">Inattivi</option>
+                                    <option value="new">Nuovi</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Filtri Rapidi -->
+                        <div class="quick-filters mt-4">
+                            <div class="flex flex-wrap gap-2">
+                                <button class="filter-tag active" data-filter="all">
+                                    <i class="fas fa-users mr-1"></i>Tutti
+                                </button>
+                                <button class="filter-tag" data-filter="recent">
+                                    <i class="fas fa-clock mr-1"></i>Recenti
+                                </button>
+                                <button class="filter-tag" data-filter="favorites">
+                                    <i class="fas fa-star mr-1"></i>Preferiti
+                                </button>
+                                <button class="filter-tag" data-filter="local">
+                                    <i class="fas fa-mobile-alt mr-1"></i>Offline
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista Clienti -->
+            <div class="client-list-content">
+                <!-- Vista Desktop (Tabella) -->
+                <div class="desktop-view hidden lg:block">
+                    <div class="card">
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th class="sortable" data-sort="name">
+                                                <i class="fas fa-sort mr-1"></i>Nome
+                                            </th>
+                                            <th class="sortable" data-sort="email">
+                                                <i class="fas fa-sort mr-1"></i>Contatti
+                                            </th>
+                                            <th class="sortable" data-sort="city">
+                                                <i class="fas fa-sort mr-1"></i>Località
+                                            </th>
+                                            <th class="sortable" data-sort="category">
+                                                <i class="fas fa-sort mr-1"></i>Categoria
+                                            </th>
+                                            <th>Stato</th>
+                                            <th class="text-center">Azioni</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="clients-table-body">
+                                        <!-- Popolato dinamicamente -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vista Mobile (Cards) -->
+                <div class="mobile-view lg:hidden">
+                    <div id="clients-mobile-list" class="space-y-4">
+                        <!-- Popolato dinamicamente -->
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="clients-loading" class="hidden">
+                    <t t-call="raccolta.LoadingState">
+                        <t t-set="message">Caricamento clienti...</t>
+                    </t>
+                </div>
+
+                <!-- Empty State -->
+                <div id="clients-empty" class="hidden">
+                    <t t-call="raccolta.EmptyState">
+                        <t t-set="icon">fas fa-users</t>
+                        <t t-set="title">Nessun Cliente Trovato</t>
+                        <t t-set="description">Non ci sono clienti che corrispondono ai criteri di ricerca</t>
+                        <t t-set="action_text">Aggiungi Cliente</t>
+                        <t t-set="action_icon">fas fa-plus</t>
+                        <t t-set="action_id">add-client-empty</t>
+                    </t>
+                </div>
+            </div>
+
+            <!-- Paginazione -->
+            <div class="pagination-container mt-6" id="clients-pagination">
+                <!-- Popolata dinamicamente -->
+            </div>
+        </div>
+    </t>
+
+    <!-- Template Riga Cliente (Desktop) -->
+    <t t-name="raccolta.ClientTableRow">
+        <tr class="client-row" t-att-data-client-id="client.id">
+            <td>
+                <div class="flex items-center gap-3">
+                    <!-- Avatar -->
+                    <div class="client-avatar">
+                        <t t-if="client.image">
+                            <img t-att-src="client.image" t-att-alt="client.name" class="w-10 h-10 rounded-full"/>
+                        </t>
+                        <t t-else="">
+                            <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user text-gray-500"></i>
+                            </div>
+                        </t>
+                    </div>
+
+                    <!-- Info Cliente -->
+                    <div>
+                        <h4 class="font-medium text-gray-900" t-esc="client.name"/>
+                        <p class="text-sm text-gray-600" t-if="client.vat">P.IVA: <span t-esc="client.vat"/></p>
+                        <p class="text-sm text-gray-600" t-if="client.ref">Cod: <span t-esc="client.ref"/></p>
+                    </div>
+                </div>
+            </td>
+
+            <td>
+                <div class="contact-info">
+                    <div t-if="client.email" class="flex items-center text-sm text-gray-700 mb-1">
+                        <i class="fas fa-envelope mr-2 text-gray-400"></i>
+                        <a t-att-href="'mailto:' + client.email" t-esc="client.email" class="hover:text-blue-600"/>
+                    </div>
+                    <div t-if="client.phone" class="flex items-center text-sm text-gray-700">
+                        <i class="fas fa-phone mr-2 text-gray-400"></i>
+                        <a t-att-href="'tel:' + client.phone" t-esc="client.phone" class="hover:text-blue-600"/>
+                    </div>
+                </div>
+            </td>
+
+            <td>
+                <div class="location-info">
+                    <div t-if="client.city" class="text-sm text-gray-700" t-esc="client.city"/>
+                    <div t-if="client.state_id" class="text-sm text-gray-600" t-esc="client.state_id[1]"/>
+                    <div t-if="client.country_id" class="text-sm text-gray-500" t-esc="client.country_id[1]"/>
+                </div>
+            </td>
+
+            <td>
+                <span class="category-badge" t-att-class="client.is_company ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'">
+                    <t t-if="client.is_company">Azienda</t>
+                    <t t-else="">Privato</t>
+                </span>
+            </td>
+
+            <td>
+                <div class="status-indicators">
+                    <span class="status-badge" t-att-class="client.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                        <i t-att-class="client.active ? 'fas fa-check' : 'fas fa-times'" class="mr-1"></i>
+                        <t t-if="client.active">Attivo</t>
+                        <t t-else="">Inattivo</t>
+                    </span>
+
+                    <span class="local-badge ml-2" t-if="client.is_local">
+                        <i class="fas fa-mobile-alt text-blue-500" title="Cliente locale"></i>
+                    </span>
+                </div>
+            </td>
+
+            <td class="text-center">
+                <div class="action-buttons flex justify-center gap-1">
+                    <button class="btn btn-sm btn-secondary" t-att-data-client-id="client.id" data-action="view">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-sm btn-primary" t-att-data-client-id="client.id" data-action="edit">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-success" t-att-data-client-id="client.id" data-action="select">
+                        <i class="fas fa-check"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    </t>
+
+    <!-- Template Card Cliente (Mobile) -->
+    <t t-name="raccolta.ClientMobileCard">
+        <div class="client-mobile-card card" t-att-data-client-id="client.id">
+            <div class="card-body">
+                <!-- Header Card -->
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex items-center gap-3">
+                        <!-- Avatar -->
+                        <div class="client-avatar">
+                            <t t-if="client.image">
+                                <img t-att-src="client.image" t-att-alt="client.name" class="w-12 h-12 rounded-full"/>
+                            </t>
+                            <t t-else="">
+                                <div class="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-user text-gray-500"></i>
+                                </div>
+                            </t>
+                        </div>
+
+                        <!-- Nome e Info Base -->
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-semibold text-gray-900 truncate" t-esc="client.name"/>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="category-badge text-xs" t-att-class="client.is_company ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'">
+                                    <t t-if="client.is_company">Azienda</t>
+                                    <t t-else="">Privato</t>
+                                </span>
+                                <span class="status-badge text-xs" t-att-class="client.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                                    <t t-if="client.active">Attivo</t>
+                                    <t t-else="">Inattivo</t>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Menu Azioni -->
+                    <div class="relative">
+                        <button class="btn btn-sm btn-secondary" data-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <div class="dropdown-menu">
+                            <button class="dropdown-item" t-att-data-client-id="client.id" data-action="view">
+                                <i class="fas fa-eye mr-2"></i>Visualizza
+                            </button>
+                            <button class="dropdown-item" t-att-data-client-id="client.id" data-action="edit">
+                                <i class="fas fa-edit mr-2"></i>Modifica
+                            </button>
+                            <button class="dropdown-item" t-att-data-client-id="client.id" data-action="select">
+                                <i class="fas fa-check mr-2"></i>Seleziona
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dettagli Cliente -->
+                <div class="client-details space-y-2">
+                    <!-- Contatti -->
+                    <div t-if="client.email or client.phone" class="contact-section">
+                        <div t-if="client.email" class="flex items-center text-sm text-gray-700">
+                            <i class="fas fa-envelope mr-2 text-gray-400 w-4"></i>
+                            <a t-att-href="'mailto:' + client.email" t-esc="client.email" class="hover:text-blue-600 truncate"/>
+                        </div>
+                        <div t-if="client.phone" class="flex items-center text-sm text-gray-700">
+                            <i class="fas fa-phone mr-2 text-gray-400 w-4"></i>
+                            <a t-att-href="'tel:' + client.phone" t-esc="client.phone" class="hover:text-blue-600"/>
+                        </div>
+                    </div>
+
+                    <!-- Indirizzo -->
+                    <div t-if="client.street or client.city" class="address-section">
+                        <div class="flex items-start text-sm text-gray-700">
+                            <i class="fas fa-map-marker-alt mr-2 text-gray-400 w-4 mt-0.5"></i>
+                            <div class="flex-1">
+                                <div t-if="client.street" t-esc="client.street"/>
+                                <div t-if="client.city or client.zip">
+                                    <span t-if="client.zip" t-esc="client.zip"/>
+                                    <span t-if="client.city" t-esc="client.city"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- P.IVA -->
+                    <div t-if="client.vat" class="vat-section">
+                        <div class="flex items-center text-sm text-gray-700">
+                            <i class="fas fa-file-invoice mr-2 text-gray-400 w-4"></i>
+                            <span>P.IVA: </span><span t-esc="client.vat"/>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Card -->
+                <div class="card-footer mt-4 pt-3 border-t border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <!-- Indicatori -->
+                        <div class="flex items-center gap-2">
+                            <span t-if="client.is_local" class="text-blue-500" title="Cliente locale">
+                                <i class="fas fa-mobile-alt"></i>
+                            </span>
+                            <span t-if="client.customer_rank > 0" class="text-green-500" title="Cliente">
+                                <i class="fas fa-user-check"></i>
+                            </span>
+                            <span t-if="client.supplier_rank > 0" class="text-orange-500" title="Fornitore">
+                                <i class="fas fa-truck"></i>
+                            </span>
+                        </div>
+
+                        <!-- Azioni Rapide -->
+                        <div class="flex gap-2">
+                            <button class="btn btn-sm btn-primary" t-att-data-client-id="client.id" data-action="select">
+                                <i class="fas fa-check mr-1"></i>Seleziona
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- Template Paginazione -->
+    <t t-name="raccolta.ClientPagination">
+        <div class="pagination-wrapper">
+            <div class="flex items-center justify-between">
+                <!-- Info Risultati -->
+                <div class="pagination-info">
+                    <p class="text-sm text-gray-700">
+                        Showing <span t-esc="start"/> to <span t-esc="end"/> of <span t-esc="total"/> results
+                    </p>
+                </div>
+
+                <!-- Controlli Paginazione -->
+                <div class="pagination-controls">
+                    <nav class="flex items-center gap-1">
+                        <button class="pagination-btn" t-att-disabled="current_page <= 1" data-page="prev">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+
+                        <t t-foreach="pages" t-as="page">
+                            <button class="pagination-btn"
+                                    t-att-class="page.current ? 'active' : ''"
+                                    t-att-data-page="page.number"
+                                    t-esc="page.number"/>
+                        </t>
+
+                        <button class="pagination-btn" t-att-disabled="current_page >= total_pages" data-page="next">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- Template Filtro Tag -->
+    <t t-name="raccolta.FilterTag">
+        <button class="filter-tag" t-att-class="active ? 'active' : ''" t-att-data-filter="filter_key">
+            <i t-att-class="icon" class="mr-1"></i>
+            <span t-esc="label"/>
+            <span t-if="count" class="badge ml-1" t-esc="count"/>
+        </button>
+    </t>
+
+</templates>
