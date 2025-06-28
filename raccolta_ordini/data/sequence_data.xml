@@ -1,1 +1,89 @@
- 
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Sequenza base per ordini offline -->
+        <record id="seq_sale_order_offline" model="ir.sequence">
+            <field name="name">Ordini Offline</field>
+            <field name="code">sale.order.offline</field>
+            <field name="prefix">OFF</field>
+            <field name="suffix"></field>
+            <field name="padding">6</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="implementation">standard</field>
+            <field name="active">True</field>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+
+        <!-- Sequenza per DDT offline -->
+        <record id="seq_ddt_offline" model="ir.sequence">
+            <field name="name">DDT Offline</field>
+            <field name="code">stock.picking.ddt.offline</field>
+            <field name="prefix">DDT</field>
+            <field name="suffix"></field>
+            <field name="padding">6</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="implementation">standard</field>
+            <field name="active">True</field>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+
+        <!-- Sequenza per picking offline -->
+        <record id="seq_picking_offline" model="ir.sequence">
+            <field name="name">Picking Offline</field>
+            <field name="code">stock.picking.offline</field>
+            <field name="prefix">PICK</field>
+            <field name="suffix"></field>
+            <field name="padding">6</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="implementation">standard</field>
+            <field name="active">True</field>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+
+        <!-- Sequenza per sessioni raccolta -->
+        <record id="seq_raccolta_session" model="ir.sequence">
+            <field name="name">Sessioni Raccolta</field>
+            <field name="code">raccolta.session</field>
+            <field name="prefix">SES</field>
+            <field name="suffix"></field>
+            <field name="padding">4</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="implementation">standard</field>
+            <field name="active">True</field>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+
+        <!-- Template sequenze per agenti (saranno create dinamicamente) -->
+        <record id="seq_template_agent_order" model="ir.sequence">
+            <field name="name">Template Ordini Agente</field>
+            <field name="code">sale.order.agent.template</field>
+            <field name="prefix">AGT</field>
+            <field name="suffix"></field>
+            <field name="padding">6</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="implementation">standard</field>
+            <field name="active">False</field>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+
+        <record id="seq_template_agent_ddt" model="ir.sequence">
+            <field name="name">Template DDT Agente</field>
+            <field name="code">stock.picking.ddt.agent.template</field>
+            <field name="prefix">DDT</field>
+            <field name="suffix"></field>
+            <field name="padding">6</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="implementation">standard</field>
+            <field name="active">False</field>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+
+    </data>
+</odoo>

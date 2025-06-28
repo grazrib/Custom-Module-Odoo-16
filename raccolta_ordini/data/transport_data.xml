@@ -1,1 +1,130 @@
- 
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Metodi di trasporto -->
+        <record id="transport_method_mittente" model="stock.picking.transport.method">
+            <field name="name">Mezzo del mittente</field>
+            <field name="code">MITTENTE</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="transport_method_destinatario" model="stock.picking.transport.method">
+            <field name="name">Mezzo del destinatario</field>
+            <field name="code">DESTINATARIO</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="transport_method_vettore" model="stock.picking.transport.method">
+            <field name="name">Mezzo del vettore</field>
+            <field name="code">VETTORE</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="transport_method_corriere" model="stock.picking.transport.method">
+            <field name="name">Corriere espresso</field>
+            <field name="code">CORRIERE</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Condizioni di trasporto -->
+        <record id="transport_condition_porto_franco" model="stock.picking.transport.condition">
+            <field name="name">Porto Franco</field>
+            <field name="code">PF</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="transport_condition_porto_assegnato" model="stock.picking.transport.condition">
+            <field name="name">Porto Assegnato</field>
+            <field name="code">PA</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="transport_condition_franco_fabbrica" model="stock.picking.transport.condition">
+            <field name="name">Franco Fabbrica</field>
+            <field name="code">FF</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Aspetto dei beni -->
+        <record id="goods_appearance_colli" model="stock.picking.goods.appearance">
+            <field name="name">Colli</field>
+            <field name="code">COLLI</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="goods_appearance_bancali" model="stock.picking.goods.appearance">
+            <field name="name">Bancali</field>
+            <field name="code">BANCALI</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="goods_appearance_sfuso" model="stock.picking.goods.appearance">
+            <field name="name">Sfuso</field>
+            <field name="code">SFUSO</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="goods_appearance_cartoni" model="stock.picking.goods.appearance">
+            <field name="name">Cartoni</field>
+            <field name="code">CARTONI</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="goods_appearance_sacchi" model="stock.picking.goods.appearance">
+            <field name="name">Sacchi</field>
+            <field name="code">SACCHI</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Unità di misura peso -->
+        <record id="weight_uom_kg" model="uom.uom">
+            <field name="name">Chilogrammi</field>
+            <field name="symbol">kg</field>
+            <field name="category_id" ref="uom.product_uom_categ_kgm"/>
+            <field name="factor">1.0</field>
+            <field name="rounding">0.001</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="weight_uom_g" model="uom.uom">
+            <field name="name">Grammi</field>
+            <field name="symbol">g</field>
+            <field name="category_id" ref="uom.product_uom_categ_kgm"/>
+            <field name="factor">1000.0</field>
+            <field name="rounding">1.0</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Configurazioni trasporto di default per agenti -->
+        <record id="transport_config_default" model="raccolta.transport.config">
+            <field name="name">Configurazione Standard</field>
+            <field name="transport_method_id" ref="transport_method_mittente"/>
+            <field name="transport_condition_id" ref="transport_condition_porto_franco"/>
+            <field name="goods_appearance_id" ref="goods_appearance_colli"/>
+            <field name="weight_uom_id" ref="weight_uom_kg"/>
+            <field name="default_packages">1</field>
+            <field name="default_weight">0.0</field>
+            <field name="note">Configurazione standard per DDT</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Vettori predefiniti -->
+        <record id="carrier_interno" model="delivery.carrier">
+            <field name="name">Trasporto Interno</field>
+            <field name="delivery_type">fixed</field>
+            <field name="product_id" ref="delivery.product_product_delivery_poste_delivery"/>
+            <field name="fixed_price">0.0</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="carrier_cliente" model="delivery.carrier">
+            <field name="name">Mezzo Cliente</field>
+            <field name="delivery_type">fixed</field>
+            <field name="product_id" ref="delivery.product_product_delivery_poste_delivery"/>
+            <field name="fixed_price">0.0</field>
+            <field name="active">True</field>
+        </record>
+
+    </data>
+</odoo>
