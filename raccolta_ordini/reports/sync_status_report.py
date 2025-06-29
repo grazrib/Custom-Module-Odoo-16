@@ -81,36 +81,41 @@ class SyncStatusReport(models.Model):
                 'order' as document_type,
                 so.id as document_id,
                 so.name as document_name,
-                so.local_name,
+                COALESCE(so.client_order_ref, '') as local_name,
 
                 -- Agente
                 so.user_id as agent_id,
-                u.name as agent_name,
-                u.agent_code,
+                COALESCE(up.name, 'N/A') as agent_name,
+                COALESCE(u.agent_code, '') as agent_code,
 
                 -- Cliente
                 so.partner_id,
-                rp.name as partner_name,
+                COALESCE(rp.name, 'N/A') as partner_name,
 
                 -- Date
                 so.create_date,
-                so.sync_date,
-                so.last_sync_attempt,
+                COALESCE(so.sync_at, so.write_date) as sync_date,
+                so.write_date as last_sync_attempt,
 
-                -- Stato sync
-                so.sync_status,
-                COALESCE(so.sync_attempts, 0) as sync_attempts,
-                so.sync_error,
+                -- Stato sync (calcolato da campi esistenti)
+                CASE 
+                    WHEN COALESCE(so.synced_to_odoo, true) = true THEN 'synced'
+                    WHEN COALESCE(so.is_offline_order, false) = true AND COALESCE(so.synced_to_odoo, true) = false THEN 'pending'
+                    ELSE 'synced'
+                END as sync_status,
+
+                0 as sync_attempts,
+                '' as sync_error,
 
                 -- Metriche temporali
                 CASE 
-                    WHEN so.sync_date IS NOT NULL THEN
-                        EXTRACT(EPOCH FROM (so.sync_date - so.create_date)) / 60.0
+                    WHEN so.sync_at IS NOT NULL THEN
+                        EXTRACT(EPOCH FROM (so.sync_at - so.create_date)) / 60.0
                     ELSE NULL
                 END as sync_duration,
 
                 CASE 
-                    WHEN so.sync_status != 'synced' THEN
+                    WHEN COALESCE(so.synced_to_odoo, true) = false THEN
                         EXTRACT(EPOCH FROM (NOW() - so.create_date)) / 3600.0
                     ELSE NULL
                 END as pending_duration,
@@ -124,12 +129,12 @@ class SyncStatusReport(models.Model):
                 END as sync_priority,
 
                 CASE 
-                    WHEN so.note ILIKE '%urgente%' OR so.note ILIKE '%express%' OR so.amount_total > 10000
+                    WHEN COALESCE(so.note, '') ILIKE '%urgente%' OR COALESCE(so.note, '') ILIKE '%express%' OR so.amount_total > 10000
                     THEN true ELSE false 
                 END as is_urgent,
 
                 CASE 
-                    WHEN so.sync_status != 'synced' AND 
+                    WHEN COALESCE(so.synced_to_odoo, true) = false AND 
                          EXTRACT(EPOCH FROM (NOW() - so.create_date)) > 86400
                     THEN true ELSE false 
                 END as is_old_pending,
@@ -139,53 +144,60 @@ class SyncStatusReport(models.Model):
                 so.amount_total as document_amount,
 
                 -- Raggruppamenti
-                so.sync_date::date as sync_date_day,
+                COALESCE(so.sync_at, so.write_date)::date as sync_date_day,
                 so.create_date::date as create_date_day,
                 EXTRACT(HOUR FROM so.create_date) as hour_created
 
             FROM sale_order so
             LEFT JOIN res_users u ON u.id = so.user_id
+            LEFT JOIN res_partner up ON up.id = u.partner_id
             LEFT JOIN res_partner rp ON rp.id = so.partner_id
-            WHERE so.is_offline_order = true
+            WHERE COALESCE(so.is_offline_order, false) = true
 
             UNION ALL
 
-            -- Picking/DDT
+            -- Picking/DDT (solo se esistono campi supportati)
             SELECT 
                 'picking_' || sp.id as id,
                 'picking' as document_type,
                 sp.id as document_id,
                 sp.name as document_name,
-                sp.local_name,
+                COALESCE(sp.origin, '') as local_name,
 
                 -- Agente  
                 sp.user_id as agent_id,
-                u.name as agent_name,
-                u.agent_code,
+                COALESCE(up.name, 'N/A') as agent_name,
+                COALESCE(u.agent_code, '') as agent_code,
 
                 -- Cliente
                 sp.partner_id,
-                rp.name as partner_name,
+                COALESCE(rp.name, 'N/A') as partner_name,
 
                 -- Date
                 sp.create_date,
-                sp.sync_date,
-                sp.last_sync_attempt,
+                sp.write_date as sync_date,
+                sp.write_date as last_sync_attempt,
 
-                -- Stato sync
-                sp.sync_status,
-                COALESCE(sp.sync_attempts, 0) as sync_attempts,
-                sp.sync_error,
+                -- Stato sync (basato su stato picking)
+                CASE 
+                    WHEN sp.state = 'done' THEN 'synced'
+                    WHEN sp.state = 'cancel' THEN 'failed'
+                    WHEN sp.state IN ('waiting', 'confirmed', 'assigned') THEN 'pending'
+                    ELSE 'pending'
+                END as sync_status,
+
+                0 as sync_attempts,
+                '' as sync_error,
 
                 -- Metriche temporali
                 CASE 
-                    WHEN sp.sync_date IS NOT NULL THEN
-                        EXTRACT(EPOCH FROM (sp.sync_date - sp.create_date)) / 60.0
+                    WHEN sp.state = 'done' AND sp.date_done IS NOT NULL THEN
+                        EXTRACT(EPOCH FROM (sp.date_done - sp.create_date)) / 60.0
                     ELSE NULL
                 END as sync_duration,
 
                 CASE 
-                    WHEN sp.sync_status != 'synced' THEN
+                    WHEN sp.state != 'done' THEN
                         EXTRACT(EPOCH FROM (NOW() - sp.create_date)) / 3600.0
                     ELSE NULL
                 END as pending_duration,
@@ -203,7 +215,7 @@ class SyncStatusReport(models.Model):
                 END as is_urgent,
 
                 CASE 
-                    WHEN sp.sync_status != 'synced' AND 
+                    WHEN sp.state != 'done' AND 
                          EXTRACT(EPOCH FROM (NOW() - sp.create_date)) > 86400
                     THEN true ELSE false 
                 END as is_old_pending,
@@ -213,14 +225,15 @@ class SyncStatusReport(models.Model):
                 0.0 as document_amount,
 
                 -- Raggruppamenti
-                sp.sync_date::date as sync_date_day,
+                sp.write_date::date as sync_date_day,
                 sp.create_date::date as create_date_day,
                 EXTRACT(HOUR FROM sp.create_date) as hour_created
 
             FROM stock_picking sp
             LEFT JOIN res_users u ON u.id = sp.user_id
+            LEFT JOIN res_partner up ON up.id = u.partner_id
             LEFT JOIN res_partner rp ON rp.id = sp.partner_id
-            WHERE sp.is_offline_picking = true
+            WHERE sp.origin LIKE 'SO%' OR sp.origin LIKE 'RO%'
         """
 
 	def init(self):
@@ -348,28 +361,23 @@ class SyncStatusReport(models.Model):
 
 		if orders_to_retry:
 			orders = self.env['sale.order'].browse(orders_to_retry)
-			for order in orders:
+			for order in orders.exists():
 				try:
 					order.write({
-						'sync_status': 'pending',
-						'sync_error': None,
-						'last_sync_attempt': fields.Datetime.now()
+						'synced_to_odoo': False,
+						'sync_at': None
 					})
 					retry_count += 1
-				except Exception as e:
+				except Exception:
 					continue
 
 		if pickings_to_retry:
 			pickings = self.env['stock.picking'].browse(pickings_to_retry)
-			for picking in pickings:
+			for picking in pickings.exists():
 				try:
-					picking.write({
-						'sync_status': 'pending',
-						'sync_error': None,
-						'last_sync_attempt': fields.Datetime.now()
-					})
+					picking.action_assign()
 					retry_count += 1
-				except Exception as e:
+				except Exception:
 					continue
 
 		return {

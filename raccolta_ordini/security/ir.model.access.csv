@@ -1,93 +1,54 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-
-# ===== MODELLI RACCOLTA ORDINI =====
 access_raccolta_config_agent,raccolta.config.agent,model_raccolta_config,group_raccolta_agent,1,0,0,0
 access_raccolta_config_supervisor,raccolta.config.supervisor,model_raccolta_config,group_raccolta_supervisor,1,0,0,0
 access_raccolta_config_manager,raccolta.config.manager,model_raccolta_config,group_raccolta_manager,1,1,1,0
 access_raccolta_config_admin,raccolta.config.admin,model_raccolta_config,group_raccolta_admin,1,1,1,1
-
 access_raccolta_session_agent,raccolta.session.agent,model_raccolta_session,group_raccolta_agent,1,1,1,0
 access_raccolta_session_supervisor,raccolta.session.supervisor,model_raccolta_session,group_raccolta_supervisor,1,1,1,0
 access_raccolta_session_manager,raccolta.session.manager,model_raccolta_session,group_raccolta_manager,1,1,1,1
 access_raccolta_session_admin,raccolta.session.admin,model_raccolta_session,group_raccolta_admin,1,1,1,1
-
 access_raccolta_counter_agent,raccolta.counter.agent,model_raccolta_counter,group_raccolta_agent,1,1,1,0
 access_raccolta_counter_supervisor,raccolta.counter.supervisor,model_raccolta_counter,group_raccolta_supervisor,1,1,1,0
 access_raccolta_counter_manager,raccolta.counter.manager,model_raccolta_counter,group_raccolta_manager,1,1,1,1
 access_raccolta_counter_admin,raccolta.counter.admin,model_raccolta_counter,group_raccolta_admin,1,1,1,1
-
-# ===== ACCESSO MODELLI ODOO CORE =====
-# RES.USERS (esteso con campi raccolta)
+access_raccolta_order_report_agent,raccolta.order.report.agent,model_raccolta_order_report,group_raccolta_agent,1,0,0,0
+access_raccolta_order_report_supervisor,raccolta.order.report.supervisor,model_raccolta_order_report,group_raccolta_supervisor,1,0,0,0
+access_raccolta_order_report_manager,raccolta.order.report.manager,model_raccolta_order_report,group_raccolta_manager,1,0,0,0
+access_raccolta_agent_performance_agent,raccolta.agent.performance.agent,model_raccolta_agent_performance,group_raccolta_agent,1,0,0,0
+access_raccolta_agent_performance_supervisor,raccolta.agent.performance.supervisor,model_raccolta_agent_performance,group_raccolta_supervisor,1,0,0,0
+access_raccolta_agent_performance_manager,raccolta.agent.performance.manager,model_raccolta_agent_performance,group_raccolta_manager,1,0,0,0
+access_raccolta_sync_status_report_agent,raccolta.sync.status.report.agent,model_raccolta_sync_status_report,group_raccolta_agent,1,0,0,0
+access_raccolta_sync_status_report_supervisor,raccolta.sync.status.report.supervisor,model_raccolta_sync_status_report,group_raccolta_supervisor,1,0,0,0
+access_raccolta_sync_status_report_manager,raccolta.sync.status.report.manager,model_raccolta_sync_status_report,group_raccolta_manager,1,0,0,0
 access_res_users_agent,res.users.agent,base.model_res_users,group_raccolta_agent,1,0,0,0
 access_res_users_supervisor,res.users.supervisor,base.model_res_users,group_raccolta_supervisor,1,0,0,0
 access_res_users_manager,res.users.manager,base.model_res_users,group_raccolta_manager,1,1,0,0
-
-# SALE.ORDER (esteso)
 access_sale_order_agent,sale.order.agent,sale.model_sale_order,group_raccolta_agent,1,1,1,0
 access_sale_order_supervisor,sale.order.supervisor,sale.model_sale_order,group_raccolta_supervisor,1,1,1,0
 access_sale_order_manager,sale.order.manager,sale.model_sale_order,group_raccolta_manager,1,1,1,1
-
-# SALE.ORDER.LINE
 access_sale_order_line_agent,sale.order.line.agent,sale.model_sale_order_line,group_raccolta_agent,1,1,1,0
 access_sale_order_line_supervisor,sale.order.line.supervisor,sale.model_sale_order_line,group_raccolta_supervisor,1,1,1,0
 access_sale_order_line_manager,sale.order.line.manager,sale.model_sale_order_line,group_raccolta_manager,1,1,1,1
-
-# STOCK.PICKING (esteso)
 access_stock_picking_agent,stock.picking.agent,stock.model_stock_picking,group_raccolta_agent,1,1,1,0
 access_stock_picking_supervisor,stock.picking.supervisor,stock.model_stock_picking,group_raccolta_supervisor,1,1,1,0
 access_stock_picking_manager,stock.picking.manager,stock.model_stock_picking,group_raccolta_manager,1,1,1,1
-
-# STOCK.MOVE
 access_stock_move_agent,stock.move.agent,stock.model_stock_move,group_raccolta_agent,1,1,1,0
 access_stock_move_supervisor,stock.move.supervisor,stock.model_stock_move,group_raccolta_supervisor,1,1,1,0
 access_stock_move_manager,stock.move.manager,stock.model_stock_move,group_raccolta_manager,1,1,1,1
-
-# ===== ACCESSO MODELLI DDT BASE =====
-# STOCK.DELIVERY.NOTE.TYPE (readonly per agenti)
-access_stock_delivery_note_type_agent,stock.delivery.note.type.agent,l10n_it_delivery_note_base.model_stock_delivery_note_type,group_raccolta_agent,1,0,0,0
-access_stock_delivery_note_type_supervisor,stock.delivery.note.type.supervisor,l10n_it_delivery_note_base.model_stock_delivery_note_type,group_raccolta_supervisor,1,0,0,0
-access_stock_delivery_note_type_manager,stock.delivery.note.type.manager,l10n_it_delivery_note_base.model_stock_delivery_note_type,group_raccolta_manager,1,1,0,0
-
-# TRANSPORT MODELS (readonly per agenti)
-access_stock_picking_transport_method_agent,stock.picking.transport.method.agent,l10n_it_delivery_note_base.model_stock_picking_transport_method,group_raccolta_agent,1,0,0,0
-access_stock_picking_transport_condition_agent,stock.picking.transport.condition.agent,l10n_it_delivery_note_base.model_stock_picking_transport_condition,group_raccolta_agent,1,0,0,0
-access_stock_picking_transport_reason_agent,stock.picking.transport.reason.agent,l10n_it_delivery_note_base.model_stock_picking_transport_reason,group_raccolta_agent,1,0,0,0
-access_stock_picking_goods_appearance_agent,stock.picking.goods.appearance.agent,l10n_it_delivery_note_base.model_stock_picking_goods_appearance,group_raccolta_agent,1,0,0,0
-
-# ===== ACCESSO LETTURA MODELLI CORE =====
-# RES.PARTNER (clienti - readonly)
-access_res_partner_agent,res.partner.agent,base.model_res_partner,group_raccolta_agent,1,0,0,0
-access_res_partner_supervisor,res.partner.supervisor,base.model_res_partner,group_raccolta_supervisor,1,1,1,0
-access_res_partner_manager,res.partner.manager,base.model_res_partner,group_raccolta_manager,1,1,1,0
-
-# PRODUCT.PRODUCT (readonly)
 access_product_product_agent,product.product.agent,product.model_product_product,group_raccolta_agent,1,0,0,0
 access_product_product_supervisor,product.product.supervisor,product.model_product_product,group_raccolta_supervisor,1,0,0,0
 access_product_product_manager,product.product.manager,product.model_product_product,group_raccolta_manager,1,1,0,0
-
-# PRODUCT.TEMPLATE (readonly)
 access_product_template_agent,product.template.agent,product.model_product_template,group_raccolta_agent,1,0,0,0
 access_product_template_supervisor,product.template.supervisor,product.model_product_template,group_raccolta_supervisor,1,0,0,0
 access_product_template_manager,product.template.manager,product.model_product_template,group_raccolta_manager,1,1,0,0
-
-# PRODUCT.CATEGORY (readonly)
 access_product_category_agent,product.category.agent,product.model_product_category,group_raccolta_agent,1,0,0,0
-
-# UOM.UOM (readonly)
 access_uom_uom_agent,uom.uom.agent,uom.model_uom_uom,group_raccolta_agent,1,0,0,0
-
-# ACCOUNT.TAX (readonly)
 access_account_tax_agent,account.tax.agent,account.model_account_tax,group_raccolta_agent,1,0,0,0
-
-# IR.SEQUENCE (per numerazione agenti)
 access_ir_sequence_agent,ir.sequence.agent,base.model_ir_sequence,group_raccolta_agent,1,0,0,0
 access_ir_sequence_manager,ir.sequence.manager,base.model_ir_sequence,group_raccolta_manager,1,1,1,0
-
-# STOCK.LOCATION (readonly)
 access_stock_location_agent,stock.location.agent,stock.model_stock_location,group_raccolta_agent,1,0,0,0
-
-# STOCK.WAREHOUSE (readonly)
 access_stock_warehouse_agent,stock.warehouse.agent,stock.model_stock_warehouse,group_raccolta_agent,1,0,0,0
-
-# STOCK.QUANT (readonly per controllo stock)
 access_stock_quant_agent,stock.quant.agent,stock.model_stock_quant,group_raccolta_agent,1,0,0,0
+access_res_partner_agent,res.partner.agent,base.model_res_partner,group_raccolta_agent,1,0,0,0
+access_res_partner_supervisor,res.partner.supervisor,base.model_res_partner,group_raccolta_supervisor,1,0,0,0
+access_res_partner_manager,res.partner.manager,base.model_res_partner,group_raccolta_manager,1,1,0,0

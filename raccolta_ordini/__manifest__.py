@@ -114,5 +114,5 @@ Requisiti:
 	'uninstall_hook': 'uninstall_hook',
 
 	# Configurazione price_depend per DDT
-	'price_depend': ['l10n_it_delivery_note_base'],
+# 	'price_depend': ['l10n_it_delivery_note_base'],
 }

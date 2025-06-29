@@ -79,8 +79,8 @@ class AgentPerformance(models.Model):
             WITH agent_stats AS (
                 SELECT 
                     u.id as agent_id,
-                    u.name as agent_name,
-                    u.agent_code,
+                    COALESCE(up.name, 'N/A') as agent_name,
+                    COALESCE(u.agent_code, '') as agent_code,
 
                     -- Periodo (mensile di default)
                     DATE_TRUNC('month', so.create_date)::date as period_start,
@@ -108,29 +108,32 @@ class AgentPerformance(models.Model):
 
                     -- Prodotti e quantità
                     COUNT(DISTINCT sol.product_id) as products_count,
-                    SUM(sol.product_uom_qty) as total_quantity,
+                    COALESCE(SUM(sol.product_uom_qty), 0) as total_quantity,
 
-                    -- Sincronizzazione
-                    COUNT(CASE WHEN so.sync_status = 'synced' THEN 1 END)::float / 
+                    -- Sincronizzazione (usando campi corretti)
+                    COUNT(CASE WHEN COALESCE(so.synced_to_odoo, true) = true THEN 1 END)::float / 
                     NULLIF(COUNT(*), 0) * 100 as sync_success_rate,
-                    COUNT(CASE WHEN so.sync_status = 'failed' THEN 1 END) as sync_errors_count,
+                    COUNT(CASE WHEN COALESCE(so.synced_to_odoo, true) = false THEN 1 END) as sync_errors_count,
 
-                    -- Tempi
+                    -- Tempi (usando campi disponibili)
                     AVG(EXTRACT(EPOCH FROM (
-                        COALESCE(so.sync_date, NOW()) - so.create_date
+                        COALESCE(so.sync_at, so.write_date, NOW()) - so.create_date
                     )) / 60.0) as avg_sync_time,
 
                     AVG(EXTRACT(EPOCH FROM (
-                        so.create_date - COALESCE(rs.start_date, so.create_date)
+                        so.create_date - COALESCE(rs.start_at, so.create_date)
                     )) / 60.0) as avg_order_creation_time,
 
-                    -- Sessioni e ore lavorate
-                    SUM(EXTRACT(EPOCH FROM (
-                        COALESCE(rs.end_date, rs.start_date + INTERVAL '8 hours') - rs.start_date
-                    )) / 3600.0) as total_work_hours,
+                    -- Sessioni e ore lavorate (stima basata su sessioni)
+                    COALESCE(SUM(EXTRACT(EPOCH FROM (
+                        COALESCE(rs.stop_at, rs.start_at + INTERVAL '8 hours') - rs.start_at
+                    )) / 3600.0), 8.0) as total_work_hours,
 
                     -- Qualità
-                    COUNT(CASE WHEN sol.discount > 0 THEN so.id END)::float / 
+                    COUNT(CASE WHEN EXISTS(
+                        SELECT 1 FROM sale_order_line sol2 
+                        WHERE sol2.order_id = so.id AND sol2.discount > 0
+                    ) THEN so.id END)::float / 
                     NULLIF(COUNT(DISTINCT so.id), 0) * 100 as discount_rate,
 
                     -- Raggruppamenti temporali
@@ -140,17 +143,18 @@ class AgentPerformance(models.Model):
                     EXTRACT(QUARTER FROM so.create_date) as quarter
 
                 FROM res_users u
-                LEFT JOIN sale_order so ON so.user_id = u.id AND so.is_offline_order = true
+                LEFT JOIN res_partner up ON up.id = u.partner_id
+                LEFT JOIN sale_order so ON so.user_id = u.id AND COALESCE(so.is_offline_order, false) = true
                 LEFT JOIN sale_order_line sol ON sol.order_id = so.id
                 LEFT JOIN res_partner rp ON rp.id = so.partner_id
                 LEFT JOIN raccolta_session rs ON rs.user_id = u.id 
-                    AND rs.start_date::date = so.create_date::date
+                    AND rs.start_at::date = so.create_date::date
 
-                WHERE u.is_raccolta_agent = true
+                WHERE COALESCE(u.is_raccolta_agent, false) = true
                     AND so.id IS NOT NULL
 
                 GROUP BY 
-                    u.id, u.name, u.agent_code,
+                    u.id, up.name, u.agent_code,
                     DATE_TRUNC('month', so.create_date),
                     EXTRACT(YEAR FROM so.create_date),
                     EXTRACT(MONTH FROM so.create_date),
@@ -169,15 +173,15 @@ class AgentPerformance(models.Model):
                     CASE 
                         WHEN clients_count > 0 THEN orders_count::float / clients_count
                         ELSE 0 
-                    END as avg_orders_per_client,
+                    END as calc_avg_orders_per_client,
 
                     CASE 
                         WHEN orders_count > 0 THEN total_quantity / orders_count
                         ELSE 0 
-                    END as avg_quantity_per_order,
+                    END as calc_avg_quantity_per_order,
 
                     -- Calcola giorni lavorativi nel periodo
-                    EXTRACT(DAYS FROM (period_end - period_start + 1)) as period_days
+                    (period_end - period_start + 1) as period_days
 
                 FROM agent_stats
             ),
@@ -188,13 +192,13 @@ class AgentPerformance(models.Model):
                     CASE 
                         WHEN period_days > 0 THEN orders_count::float / period_days
                         ELSE 0 
-                    END as avg_orders_per_day,
+                    END as calc_avg_orders_per_day,
 
                     -- Tasso errori (ordini annullati / totali)
                     CASE 
                         WHEN orders_count > 0 THEN orders_cancelled::float / orders_count * 100
                         ELSE 0 
-                    END as error_rate,
+                    END as calc_error_rate,
 
                     -- Punteggio efficienza (formula personalizzabile)
                     CASE 
@@ -203,7 +207,7 @@ class AgentPerformance(models.Model):
                             (avg_order_amount / 100) * 
                             (1 - LEAST(orders_cancelled::float / orders_count, 0.5))
                         ELSE 0 
-                    END as efficiency_score
+                    END as calc_efficiency_score
 
                 FROM performance_calc
             )
@@ -220,7 +224,7 @@ class AgentPerformance(models.Model):
                 orders_confirmed,
                 orders_cancelled,
                 orders_draft,
-                avg_orders_per_day,
+                calc_avg_orders_per_day as avg_orders_per_day,
                 avg_order_creation_time,
                 total_work_hours,
                 total_amount,
@@ -229,20 +233,20 @@ class AgentPerformance(models.Model):
                 min_order_amount,
                 clients_count,
                 new_clients_count,
-                avg_orders_per_client,
+                calc_avg_orders_per_client as avg_orders_per_client,
                 products_count,
                 total_quantity,
-                avg_quantity_per_order,
+                calc_avg_quantity_per_order as avg_quantity_per_order,
                 sync_success_rate,
                 sync_errors_count,
                 avg_sync_time,
-                error_rate,
+                calc_error_rate as error_rate,
                 discount_rate,
                 0.0 as return_rate,  -- Placeholder per futuri calcoli resi
-                efficiency_score,
+                calc_efficiency_score as efficiency_score,
                 ROW_NUMBER() OVER (
                     PARTITION BY period_start 
-                    ORDER BY efficiency_score DESC
+                    ORDER BY calc_efficiency_score DESC
                 ) as productivity_rank,
                 year,
                 month,
@@ -250,7 +254,7 @@ class AgentPerformance(models.Model):
                 quarter
 
             FROM final_calc
-            ORDER BY period_start DESC, efficiency_score DESC
+            ORDER BY period_start DESC, calc_efficiency_score DESC
         """
 
 	def init(self):

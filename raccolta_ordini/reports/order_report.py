@@ -86,27 +86,31 @@ class OrderReport(models.Model):
                 so.id,
                 so.id as order_id,
                 so.name as order_name,
-                so.local_name,
+                COALESCE(so.client_order_ref, '') as local_name,
 
-                -- Agente
+                -- Agente (usando partner_id dal res_users)
                 so.user_id as agent_id,
-                u.name as agent_name,
-                u.agent_code,
+                COALESCE(up.name, 'N/A') as agent_name,
+                COALESCE(u.agent_code, '') as agent_code,
 
                 -- Cliente
                 so.partner_id,
-                rp.name as partner_name,
-                rp.vat as partner_vat,
-                rp.city as partner_city,
+                COALESCE(rp.name, 'N/A') as partner_name,
+                COALESCE(rp.vat, '') as partner_vat,
+                COALESCE(rp.city, '') as partner_city,
 
                 -- Date
                 so.date_order,
                 so.create_date,
-                so.sync_date,
+                COALESCE(so.sync_at, so.write_date) as sync_date,
 
                 -- Stati
                 so.state,
-                so.sync_status,
+                CASE 
+                    WHEN COALESCE(so.synced_to_odoo, true) = true THEN 'synced'
+                    WHEN COALESCE(so.is_offline_order, false) = true AND COALESCE(so.synced_to_odoo, true) = false THEN 'pending'
+                    ELSE 'synced'
+                END as sync_status,
 
                 -- Importi
                 so.amount_untaxed,
@@ -118,27 +122,27 @@ class OrderReport(models.Model):
                 (SELECT COUNT(*) FROM sale_order_line sol WHERE sol.order_id = so.id) as line_count,
                 (SELECT COALESCE(SUM(sol.product_uom_qty), 0) FROM sale_order_line sol WHERE sol.order_id = so.id) as product_qty,
 
-                -- Durate (in minuti)
+                -- Durate (in minuti) - usando campi disponibili
                 CASE 
-                    WHEN rs.start_date IS NOT NULL THEN 
-                        EXTRACT(EPOCH FROM (so.create_date - rs.start_date)) / 60.0
-                    ELSE NULL 
+                    WHEN rs.start_at IS NOT NULL THEN 
+                        EXTRACT(EPOCH FROM (so.create_date - rs.start_at)) / 60.0
+                    ELSE 0.0
                 END as creation_duration,
 
                 CASE 
-                    WHEN so.sync_date IS NOT NULL THEN 
-                        EXTRACT(EPOCH FROM (so.sync_date - so.create_date)) / 60.0
-                    ELSE NULL 
+                    WHEN so.sync_at IS NOT NULL THEN 
+                        EXTRACT(EPOCH FROM (so.sync_at - so.create_date)) / 60.0
+                    ELSE 0.0
                 END as sync_duration,
 
                 -- Classificazioni
                 CASE 
-                    WHEN so.note ILIKE '%urgente%' OR so.note ILIKE '%express%' THEN 'express'
-                    WHEN so.note ILIKE '%campione%' OR so.note ILIKE '%sample%' THEN 'sample'
+                    WHEN COALESCE(so.note, '') ILIKE '%urgente%' OR COALESCE(so.note, '') ILIKE '%express%' THEN 'express'
+                    WHEN COALESCE(so.note, '') ILIKE '%campione%' OR COALESCE(so.note, '') ILIKE '%sample%' THEN 'sample'
                     ELSE 'standard'
                 END as order_type,
 
-                so.is_offline_order as is_offline,
+                COALESCE(so.is_offline_order, false) as is_offline,
 
                 CASE 
                     WHEN EXISTS(SELECT 1 FROM sale_order_line sol WHERE sol.order_id = so.id AND sol.discount > 0) 
@@ -154,12 +158,10 @@ class OrderReport(models.Model):
 
             FROM sale_order so
             LEFT JOIN res_users u ON u.id = so.user_id
+            LEFT JOIN res_partner up ON up.id = u.partner_id
             LEFT JOIN res_partner rp ON rp.id = so.partner_id
-            LEFT JOIN raccolta_session rs ON rs.id = (
-                SELECT session_id FROM sale_order so2 
-                WHERE so2.id = so.id AND so2.session_id IS NOT NULL
-            )
-            WHERE so.is_offline_order = true
+            LEFT JOIN raccolta_session rs ON rs.id = so.raccolta_session_id
+            WHERE COALESCE(so.is_offline_order, false) = true OR so.raccolta_session_id IS NOT NULL
         """
 
 	def init(self):

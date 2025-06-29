@@ -57,16 +57,17 @@ class SaleOrder(models.Model):
 		help='Crea automaticamente il DDT alla validazione picking'
 	)
 
-	ddt_ids = fields.One2many(
+	# Alias per compatibilità - usa i campi del modulo DDT esistente
+	ddt_ids = fields.Many2many(
 		'stock.delivery.note',
-		'sale_id',
 		string='DDT Collegati',
+		related='delivery_note_ids',
 		help='DDT generati per questo ordine'
 	)
 
 	ddt_count = fields.Integer(
 		string='Numero DDT',
-		compute='_compute_ddt_count',
+		related='delivery_note_count',
 		help='Numero di DDT collegati'
 	)
 
@@ -95,10 +96,10 @@ class SaleOrder(models.Model):
 		help='Indica se l\'ordine ha una firma digitale'
 	)
 
-	# === CAMPI NOTE SPECIFICHE ===
+	# === CAMPI NOTE ESTESE ===
 	general_notes = fields.Text(
-		string='Note Generali Ordine',
-		help='Note generali visibili in ricevuta'
+		string='Note Generali',
+		help='Note generali visibili al cliente'
 	)
 
 	internal_notes = fields.Text(
@@ -112,91 +113,79 @@ class SaleOrder(models.Model):
 	)
 
 	# === COMPUTED FIELDS ===
-	@api.depends('ddt_ids')
-	def _compute_ddt_count(self):
-		for order in self:
-			order.ddt_count = len(order.ddt_ids)
-
 	@api.depends('signature_data')
 	def _compute_has_signature(self):
+		"""Calcola se l'ordine ha una firma"""
 		for order in self:
-			order.has_signature = bool(order.signature_data)
+			order.has_signature = bool(order.signature_data and order.signature_data.strip())
 
-	# === BUSINESS METHODS ===
+	# === METODI BUSINESS ===
+	@api.model
+	def create(self, vals):
+		"""Override create per gestire numerazione agente"""
+		# Se l'ordine viene creato tramite raccolta e l'utente ha numerazione personalizzata
+		if (vals.get('raccolta_session_id') and 
+			self.env.user.is_raccolta_agent and 
+			self.env.user.order_sequence_id and 
+			not vals.get('name')):
+			
+			vals['name'] = self.env.user.get_next_order_number()
+
+		# Imposta flag offline se creato tramite sessione raccolta
+		if vals.get('raccolta_session_id'):
+			vals['is_offline_order'] = True
+			vals['offline_created_at'] = fields.Datetime.now()
+
+		return super().create(vals)
+
 	def action_confirm(self):
-		"""Override conferma ordine per gestire creazione automatica documenti"""
-		result = super(SaleOrder, self).action_confirm()
+		"""Override conferma per gestire picking e DDT automatici"""
+		result = super().action_confirm()
 
 		for order in self:
-			if order.auto_create_picking and order.raccolta_session_id:
-				order._create_picking_from_raccolta()
+			if order.raccolta_session_id and order.auto_create_picking:
+				order._create_picking_for_raccolta()
 
 		return result
 
-	def _create_picking_from_raccolta(self):
-		"""Crea picking con numerazione agente se necessario"""
+	def _create_picking_for_raccolta(self):
+		"""Crea picking specifico per raccolta ordini"""
 		self.ensure_one()
 
 		if not self.raccolta_session_id:
-			return super(SaleOrder, self)._create_picking_from_raccolta()
+			return
 
-		# Ottieni configurazione della sessione
-		config = self.raccolta_session_id.config_id
-		user = self.raccolta_session_id.user_id
+		# Usa il metodo standard di Odoo per creare picking
+		picking = self.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
 
-		# Crea picking standard
-		pickings = self.picking_ids.filtered(lambda p: p.state not in ['done', 'cancel'])
-
-		for picking in pickings:
-			# Se l'utente ha numerazione personalizzata, genera nome personalizzato
-			if user.is_raccolta_agent and user.picking_sequence_id and config.use_agent_numbering:
-				# Verifica se il picking non ha già un nome personalizzato
-				if not picking.name.startswith(user.picking_sequence_id.prefix):
-					picking.name = user.get_next_picking_number()
-
-			# Imposta DDT automatico se configurato
-			if config.auto_create_ddt:
-				picking.auto_create_ddt = True
+		if picking and self.auto_create_ddt:
+			# Imposta flag per creazione DDT automatica
+			picking.write({'auto_create_ddt': True})
 
 	def create_receipt_data(self, format='48mm', include_signature=True):
-		"""Crea dati per la generazione ricevuta"""
+		"""Crea dati per generazione ricevuta"""
 		self.ensure_one()
 
-		# Prepara dati prodotti con note
-		products_data = []
-		for line in self.order_line:
-			if line.product_id.type != 'service':  # Escludi servizi
-				products_data.append({
-					'id': line.product_id.id,
-					'name': line.product_id.name,
-					'default_code': line.product_id.default_code or '',
-					'quantity': line.product_uom_qty,
-					'price_unit': line.price_unit,
-					'price_subtotal': line.price_subtotal,
-					'uom_name': line.product_uom.name,
-					'note': getattr(line, 'note', '') or '',  # Note specifiche del prodotto
-				})
-
-		# Dati ordine
-		order_data = {
-			'id': self.id,
-			'name': self.name,
-			'date_order': self.date_order,
-			'client_name': self.partner_id.name,
-			'partner_id': self.partner_id.id,
-			'state': self.state,
-			'general_notes': self.general_notes or '',
-			'products': products_data,
-			'amount_untaxed': self.amount_untaxed,
-			'amount_tax': self.amount_tax,
-			'amount_total': self.amount_total,
-			'synced': self.synced_to_odoo,
+		# Dati azienda
+		company = self.company_id
+		company_data = {
+			'name': company.name,
+			'street': company.street or '',
+			'street2': company.street2 or '',
+			'city': company.city or '',
+			'zip': company.zip or '',
+			'state': company.state_id.name if company.state_id else '',
+			'country': company.country_id.name if company.country_id else '',
+			'phone': company.phone or '',
+			'email': company.email or '',
+			'vat': company.vat or '',
+			'website': company.website or '',
 		}
 
 		# Dati cliente
 		client_data = {
-			'id': self.partner_id.id,
 			'name': self.partner_id.name,
+			'display_name': self.partner_id.display_name,
 			'street': self.partner_id.street or '',
 			'street2': self.partner_id.street2 or '',
 			'city': self.partner_id.city or '',
@@ -207,18 +196,35 @@ class SaleOrder(models.Model):
 			'mobile': self.partner_id.mobile or '',
 			'email': self.partner_id.email or '',
 			'vat': self.partner_id.vat or '',
+			'is_company': self.partner_id.is_company,
 		}
 
-		# Dati azienda
-		company_data = {
-			'id': self.company_id.id,
-			'name': self.company_id.name,
-			'street': self.company_id.street or '',
-			'city': self.company_id.city or '',
-			'zip': self.company_id.zip or '',
-			'phone': self.company_id.phone or '',
-			'email': self.company_id.email or '',
-			'vat': self.company_id.vat or '',
+		# Dati ordine
+		order_data = {
+			'name': self.name,
+			'id': self.id,
+			'state': self.state,
+			'date_order': self.date_order,
+			'amount_untaxed': self.amount_untaxed,
+			'amount_tax': self.amount_tax,
+			'amount_total': self.amount_total,
+			'currency_name': self.currency_id.name,
+			'general_notes': self.general_notes or '',
+			'internal_notes': self.internal_notes or '',
+			'delivery_instructions': self.delivery_instructions or '',
+			'agent_code': self.agent_code or '',
+			'order_lines': [
+				{
+					'product_name': line.product_id.name,
+					'product_code': line.product_id.default_code or '',
+					'quantity': line.product_uom_qty,
+					'uom_name': line.product_uom.name,
+					'price_unit': line.price_unit,
+					'price_subtotal': line.price_subtotal,
+					'note': getattr(line, 'note', '') or '',
+				}
+				for line in self.order_line
+			]
 		}
 
 		# Dati picking collegati

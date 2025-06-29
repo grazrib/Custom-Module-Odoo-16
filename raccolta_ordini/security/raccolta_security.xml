@@ -1,50 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data noupdate="1">
-
-        <!-- ================================= -->
-        <!-- CATEGORIE DI ACCESSO             -->
-        <!-- ================================= -->
-
-        <record id="category_raccolta_ordini" model="ir.module.category">
-            <field name="name">Raccolta Ordini</field>
-            <field name="description">Gestione raccolta ordini offline</field>
-            <field name="sequence">50</field>
-        </record>
+    <data noupdate="0">
 
         <!-- ================================= -->
         <!-- GRUPPI DI SICUREZZA               -->
         <!-- ================================= -->
 
-        <!-- Gruppo base: Agente Raccolta Ordini -->
+        <!-- Gruppo Base: Agenti Raccolta -->
         <record id="group_raccolta_agent" model="res.groups">
-            <field name="name">Agente Raccolta Ordini</field>
-            <field name="category_id" ref="category_raccolta_ordini"/>
-            <field name="comment">Può utilizzare l'app raccolta ordini offline, creare ordini, stampare ricevute</field>
+            <field name="name">Raccolta: Agente</field>
+            <field name="category_id" ref="base.module_category_sales"/>
+            <field name="comment">Agenti che raccolgono ordini sul territorio</field>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
         </record>
 
-        <!-- Gruppo intermedio: Supervisore -->
+        <!-- Gruppo: Supervisore Raccolta -->
         <record id="group_raccolta_supervisor" model="res.groups">
-            <field name="name">Supervisore Raccolta Ordini</field>
-            <field name="category_id" ref="category_raccolta_ordini"/>
+            <field name="name">Raccolta: Supervisore</field>
+            <field name="category_id" ref="base.module_category_sales"/>
+            <field name="comment">Supervisori che gestiscono team di agenti</field>
             <field name="implied_ids" eval="[(4, ref('group_raccolta_agent'))]"/>
-            <field name="comment">Può gestire sessioni di altri agenti, vedere report di performance</field>
         </record>
 
-        <!-- Gruppo avanzato: Manager -->
+        <!-- Gruppo: Manager Raccolta -->
         <record id="group_raccolta_manager" model="res.groups">
-            <field name="name">Manager Raccolta Ordini</field>
-            <field name="category_id" ref="category_raccolta_ordini"/>
-            <field name="implied_ids" eval="[(4, ref('group_raccolta_supervisor'))]"/>
-            <field name="comment">Può configurare il sistema, gestire agenti, accedere a tutti i report</field>
+            <field name="name">Raccolta: Manager</field>
+            <field name="category_id" ref="base.module_category_sales"/>
+            <field name="comment">Manager che configurano e supervisionano tutto il sistema</field>
+            <field name="implied_ids" eval="[(4, ref('group_raccolta_supervisor')), (4, ref('sales_team.group_sale_manager'))]"/>
         </record>
 
-        <!-- Gruppo amministratore: Amministratore Sistema -->
+        <!-- Gruppo: Amministratore Raccolta -->
         <record id="group_raccolta_admin" model="res.groups">
-            <field name="name">Amministratore Raccolta Ordini</field>
-            <field name="category_id" ref="category_raccolta_ordini"/>
-            <field name="implied_ids" eval="[(4, ref('group_raccolta_manager'))]"/>
-            <field name="comment">Accesso completo al sistema, può modificare configurazioni avanzate</field>
+            <field name="name">Raccolta: Amministratore</field>
+            <field name="category_id" ref="base.module_category_administration"/>
+            <field name="comment">Amministratori del sistema raccolta ordini</field>
+            <field name="implied_ids" eval="[(4, ref('group_raccolta_manager')), (4, ref('base.group_system'))]"/>
         </record>
 
         <!-- ================================= -->
@@ -167,20 +158,10 @@
         </record>
 
         <!-- ================================= -->
-        <!-- IMPOSTAZIONI UTENTE AGENTE       -->
-        <!-- ================================= -->
-
-        <!-- Assegna automaticamente gruppo base agli agenti -->
-        <function model="res.users" name="write">
-            <value eval="[('is_raccolta_agent', '=', True)]"/>
-            <value eval="{'groups_id': [(4, ref('group_raccolta_agent'))]}"/>
-        </function>
-
-        <!-- ================================= -->
         <!-- SICUREZZA SESSIONI WEB           -->
         <!-- ================================= -->
 
-        <!-- Permessi per controllers web -->
+        <!-- Rule: Permessi per controllers web -->
         <record id="access_raccolta_controllers" model="ir.rule">
             <field name="name">Controller: Accesso Web Agenti</field>
             <field name="model_id" ref="base.model_res_users"/>
@@ -234,54 +215,14 @@
         <record id="rule_ddt_raccolta" model="ir.rule">
             <field name="name">DDT: Collegati a Ordini Raccolta</field>
             <field name="model_id" ref="l10n_it_delivery_note.model_stock_delivery_note"/>
-            <field name="domain_force">['|',
-                ('sale_id.raccolta_session_id', '=', False),
-                ('sale_id.raccolta_session_id.user_id', '=', user.id)
+            <field name="domain_force">[
+                ('picking_ids.sale_id.raccolta_session_id.user_id', '=', user.id)
             ]</field>
             <field name="groups" eval="[(4, ref('group_raccolta_agent'))]"/>
             <field name="perm_read" eval="True"/>
-            <field name="perm_write" eval="True"/>
-            <field name="perm_create" eval="True"/>
-            <field name="perm_unlink" eval="False"/>
-        </record>
-
-        <!-- ================================= -->
-        <!-- LIMITAZIONI SPECIALI              -->
-        <!-- ================================= -->
-
-        <!-- Agenti non possono cancellare ordini sincronizzati -->
-        <record id="rule_no_delete_synced_orders" model="ir.rule">
-            <field name="name">Protezione: No Cancellazione Ordini Sincronizzati</field>
-            <field name="model_id" ref="sale.model_sale_order"/>
-            <field name="domain_force">[
-                '|',
-                ('raccolta_session_id', '=', False),
-                ('synced_to_odoo', '=', False)
-            ]</field>
-            <field name="groups" eval="[(4, ref('group_raccolta_agent'))]"/>
-            <field name="perm_read" eval="False"/>
             <field name="perm_write" eval="False"/>
             <field name="perm_create" eval="False"/>
-            <field name="perm_unlink" eval="True"/>
-        </record>
-
-        <!-- ================================= -->
-        <!-- RECORD RULES PER COMPANY         -->
-        <!-- ================================= -->
-
-        <!-- Tutte le entità raccolta ordini sono multi-company -->
-        <record id="rule_raccolta_config_company" model="ir.rule">
-            <field name="name">Configurazioni: Multi-Company</field>
-            <field name="model_id" ref="model_raccolta_config"/>
-            <field name="global" eval="True"/>
-            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
-        </record>
-
-        <record id="rule_raccolta_session_company" model="ir.rule">
-            <field name="name">Sessioni: Multi-Company</field>
-            <field name="model_id" ref="model_raccolta_session"/>
-            <field name="global" eval="True"/>
-            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="perm_unlink" eval="False"/>
         </record>
 
     </data>

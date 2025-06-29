@@ -10,103 +10,95 @@
         <record id="default_raccolta_config" model="raccolta.config">
             <field name="name">Configurazione Default Raccolta</field>
             <field name="company_id" ref="base.main_company"/>
+            <field name="warehouse_id" ref="stock.warehouse0"/>
             <field name="active" eval="True"/>
             <field name="use_agent_numbering" eval="True"/>
             <field name="receipt_format">48mm</field>
             <field name="auto_create_ddt" eval="True"/>
-            <field name="auto_print" eval="True"/>
-        </record>
-
-        <!-- ================================= -->
-        <!-- GRUPPI SICUREZZA                  -->
-        <!-- ================================= -->
-
-        <!-- Gruppo base agenti (se non definito in security) -->
-        <record id="group_raccolta_agent_data" model="res.groups">
-            <field name="name">Agente Raccolta Ordini</field>
-            <field name="category_id" ref="base.module_category_sales"/>
-            <field name="comment">Gruppo per agenti che raccolgono ordini</field>
-        </record>
-
-        <!-- ================================= -->
-        <!-- SEQUENZE BASE                     -->
-        <!-- ================================= -->
-
-        <!-- Sequenza configurazioni -->
-        <record id="sequence_raccolta_config" model="ir.sequence">
-            <field name="name">Configurazioni Raccolta</field>
-            <field name="code">raccolta.config</field>
-            <field name="prefix">CONF</field>
-            <field name="padding">3</field>
-            <field name="number_next">1</field>
-            <field name="number_increment">1</field>
-            <field name="company_id" ref="base.main_company"/>
-        </record>
-
-        <!-- Sequenza sessioni -->
-        <record id="sequence_raccolta_session" model="ir.sequence">
-            <field name="name">Sessioni Raccolta</field>
-            <field name="code">raccolta.session</field>
-            <field name="prefix">SESS</field>
-            <field name="padding">4</field>
-            <field name="number_next">1</field>
-            <field name="number_increment">1</field>
-            <field name="company_id" ref="base.main_company"/>
+            <field name="auto_print_receipt" eval="True"/>
+            <field name="barcode_scanner" eval="True"/>
+            <field name="signature_enabled" eval="True"/>
+            <field name="max_offline_days" eval="7"/>
+            <field name="sync_batch_size" eval="50"/>
         </record>
 
         <!-- ================================= -->
         <!-- PARAMETRI SISTEMA                 -->
         <!-- ================================= -->
 
-        <!-- Parametro: Timeout sincronizzazione -->
-        <record id="param_sync_timeout" model="ir.config_parameter">
-            <field name="key">raccolta.sync_timeout</field>
-            <field name="value">300</field> <!-- 5 minuti -->
+        <!-- Parametro: Versione modulo -->
+        <record id="param_module_version" model="ir.config_parameter">
+            <field name="key">raccolta.module_version</field>
+            <field name="value">16.0.1.0.0</field>
         </record>
 
-        <!-- Parametro: Numero massimo tentativi sync -->
-        <record id="param_max_sync_retries" model="ir.config_parameter">
-            <field name="key">raccolta.max_sync_retries</field>
-            <field name="value">3</field>
-        </record>
-
-        <!-- Parametro: Modalità debug -->
+        <!-- Parametro: Debug mode -->
         <record id="param_debug_mode" model="ir.config_parameter">
             <field name="key">raccolta.debug_mode</field>
             <field name="value">False</field>
         </record>
 
-        <!-- Parametro: Versione API -->
-        <record id="param_api_version" model="ir.config_parameter">
-            <field name="key">raccolta.api_version</field>
-            <field name="value">1.0</field>
+        <!-- Parametro: API timeout -->
+        <record id="param_api_timeout" model="ir.config_parameter">
+            <field name="key">raccolta.api_timeout</field>
+            <field name="value">30</field>
+        </record>
+
+        <!-- Parametro: Max file size per upload -->
+        <record id="param_max_file_size" model="ir.config_parameter">
+            <field name="key">raccolta.max_file_size_mb</field>
+            <field name="value">10</field>
         </record>
 
         <!-- ================================= -->
-        <!-- DATI DEMO MINIMAL                 -->
+        <!-- SEQUENZE BASE                     -->
         <!-- ================================= -->
 
-        <!-- Agente demo (solo in development) -->
-        <record id="demo_agent_user" model="res.users">
-            <field name="name">Demo Agente</field>
-            <field name="login">demo.agente</field>
-            <field name="email">demo.agente@example.com</field>
-            <field name="is_raccolta_agent" eval="True"/>
-            <field name="agent_code">DEMO</field>
+        <!-- Sequenza per agenti generici -->
+        <record id="sequence_agent_generic" model="ir.sequence">
+            <field name="name">Agenti - Generico</field>
+            <field name="code">raccolta.agent.generic</field>
+            <field name="prefix">AG</field>
+            <field name="padding">3</field>
+            <field name="number_next">1</field>
             <field name="company_id" ref="base.main_company"/>
-            <field name="groups_id" eval="[(4, ref('base.group_user')), (4, ref('group_raccolta_agent_data'))]"/>
         </record>
 
-        <!-- Configurazione per agente demo -->
-        <record id="demo_agent_config" model="raccolta.config">
-            <field name="name">Configurazione Demo Agente</field>
-            <field name="user_id" ref="demo_agent_user"/>
-            <field name="company_id" ref="base.main_company"/>
-            <field name="active" eval="True"/>
-            <field name="use_agent_numbering" eval="True"/>
-            <field name="receipt_format">48mm</field>
-            <field name="auto_create_ddt" eval="True"/>
-            <field name="auto_print" eval="False"/> <!-- Non stampare in demo -->
+        <!-- ================================= -->
+        <!-- DATI DEMO (solo development)      -->
+        <!-- ================================= -->
+
+        <!-- Categoria demo per prodotti raccolta -->
+        <record id="demo_product_category" model="product.category">
+            <field name="name">Prodotti Demo Raccolta</field>
+            <field name="parent_id" ref="product.product_category_all"/>
+        </record>
+
+        <!-- Prodotto demo per test -->
+        <record id="demo_product" model="product.product">
+            <field name="name">Prodotto Demo Raccolta</field>
+            <field name="default_code">DEMO001</field>
+            <field name="categ_id" ref="demo_product_category"/>
+            <field name="type">product</field>
+            <field name="sale_ok" eval="True"/>
+            <field name="purchase_ok" eval="False"/>
+            <field name="list_price" eval="100.0"/>
+            <field name="standard_price" eval="50.0"/>
+        </record>
+
+        <!-- Partner demo per test -->
+        <record id="demo_partner" model="res.partner">
+            <field name="name">Cliente Demo Raccolta</field>
+            <field name="is_company" eval="True"/>
+            <field name="customer_rank" eval="1"/>
+            <field name="supplier_rank" eval="0"/>
+            <field name="street">Via Demo 123</field>
+            <field name="city">Milano</field>
+            <field name="zip">20100</field>
+            <field name="country_id" ref="base.it"/>
+            <field name="vat">IT12345678901</field>
+            <field name="email">demo@raccolta.test</field>
+            <field name="phone">+39 02 1234567</field>
         </record>
 
     </data>
