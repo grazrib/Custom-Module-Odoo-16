@@ -2,290 +2,111 @@
 <odoo>
     <data noupdate="1">
 
-        <!-- Configurazione Default Raccolta Ordini -->
-        <record id="raccolta_config_default" model="raccolta.config">
-            <field name="name">Configurazione Standard</field>
+        <!-- ================================= -->
+        <!-- CONFIGURAZIONE DEFAULT            -->
+        <!-- ================================= -->
+
+        <!-- Configurazione di default per l'azienda principale -->
+        <record id="default_raccolta_config" model="raccolta.config">
+            <field name="name">Configurazione Default Raccolta</field>
             <field name="company_id" ref="base.main_company"/>
-            <field name="warehouse_id" ref="stock.warehouse0"/>
-            <field name="picking_type_id" ref="stock.picking_type_out"/>
-            <field name="journal_id" ref="account.sales_journal"/>
-            <field name="pricelist_id" ref="product.list0"/>
-            <field name="payment_term_id" ref="account.account_payment_term_immediate"/>
-            <field name="auto_create_picking">True</field>
-            <field name="auto_create_ddt">True</field>
-            <field name="auto_print_receipt">False</field>
+            <field name="active" eval="True"/>
+            <field name="use_agent_numbering" eval="True"/>
             <field name="receipt_format">48mm</field>
-            <field name="max_offline_days">30</field>
-            <field name="sync_interval">300</field>
-            <field name="offline_storage_limit">100</field>
-            <field name="enable_barcode_scanner">True</field>
-            <field name="enable_signature">True</field>
-            <field name="require_customer_selection">True</field>
-            <field name="allow_negative_stock">False</field>
-            <field name="auto_validate_orders">False</field>
-            <field name="backup_frequency">daily</field>
-            <field name="active">True</field>
+            <field name="auto_create_ddt" eval="True"/>
+            <field name="auto_print" eval="True"/>
         </record>
 
-        <!-- Configurazione Mobile -->
-        <record id="raccolta_config_mobile" model="raccolta.config">
-            <field name="name">Configurazione Mobile</field>
+        <!-- ================================= -->
+        <!-- GRUPPI SICUREZZA                  -->
+        <!-- ================================= -->
+
+        <!-- Gruppo base agenti (se non definito in security) -->
+        <record id="group_raccolta_agent_data" model="res.groups">
+            <field name="name">Agente Raccolta Ordini</field>
+            <field name="category_id" ref="base.module_category_sales"/>
+            <field name="comment">Gruppo per agenti che raccolgono ordini</field>
+        </record>
+
+        <!-- ================================= -->
+        <!-- SEQUENZE BASE                     -->
+        <!-- ================================= -->
+
+        <!-- Sequenza configurazioni -->
+        <record id="sequence_raccolta_config" model="ir.sequence">
+            <field name="name">Configurazioni Raccolta</field>
+            <field name="code">raccolta.config</field>
+            <field name="prefix">CONF</field>
+            <field name="padding">3</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
             <field name="company_id" ref="base.main_company"/>
-            <field name="warehouse_id" ref="stock.warehouse0"/>
-            <field name="picking_type_id" ref="stock.picking_type_out"/>
-            <field name="journal_id" ref="account.sales_journal"/>
-            <field name="pricelist_id" ref="product.list0"/>
-            <field name="payment_term_id" ref="account.account_payment_term_immediate"/>
-            <field name="auto_create_picking">True</field>
-            <field name="auto_create_ddt">False</field>
-            <field name="auto_print_receipt">True</field>
-            <field name="receipt_format">48mm</field>
-            <field name="max_offline_days">7</field>
-            <field name="sync_interval">600</field>
-            <field name="offline_storage_limit">50</field>
-            <field name="enable_barcode_scanner">True</field>
-            <field name="enable_signature">True</field>
-            <field name="require_customer_selection">True</field>
-            <field name="allow_negative_stock">False</field>
-            <field name="auto_validate_orders">True</field>
-            <field name="backup_frequency">daily</field>
-            <field name="active">False</field>
         </record>
 
-        <!-- Configurazione Tablet -->
-        <record id="raccolta_config_tablet" model="raccolta.config">
-            <field name="name">Configurazione Tablet</field>
+        <!-- Sequenza sessioni -->
+        <record id="sequence_raccolta_session" model="ir.sequence">
+            <field name="name">Sessioni Raccolta</field>
+            <field name="code">raccolta.session</field>
+            <field name="prefix">SESS</field>
+            <field name="padding">4</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
             <field name="company_id" ref="base.main_company"/>
-            <field name="warehouse_id" ref="stock.warehouse0"/>
-            <field name="picking_type_id" ref="stock.picking_type_out"/>
-            <field name="journal_id" ref="account.sales_journal"/>
-            <field name="pricelist_id" ref="product.list0"/>
-            <field name="payment_term_id" ref="account.account_payment_term_immediate"/>
-            <field name="auto_create_picking">True</field>
-            <field name="auto_create_ddt">True</field>
-            <field name="auto_print_receipt">False</field>
-            <field name="receipt_format">80mm</field>
-            <field name="max_offline_days">15</field>
-            <field name="sync_interval">300</field>
-            <field name="offline_storage_limit">200</field>
-            <field name="enable_barcode_scanner">True</field>
-            <field name="enable_signature">True</field>
-            <field name="require_customer_selection">False</field>
-            <field name="allow_negative_stock">True</field>
-            <field name="auto_validate_orders">False</field>
-            <field name="backup_frequency">weekly</field>
-            <field name="active">False</field>
         </record>
 
-        <!-- Configurazione Demo -->
-        <record id="raccolta_config_demo" model="raccolta.config">
-            <field name="name">Configurazione Demo</field>
-            <field name="company_id" ref="base.main_company"/>
-            <field name="warehouse_id" ref="stock.warehouse0"/>
-            <field name="picking_type_id" ref="stock.picking_type_out"/>
-            <field name="journal_id" ref="account.sales_journal"/>
-            <field name="pricelist_id" ref="product.list0"/>
-            <field name="payment_term_id" ref="account.account_payment_term_immediate"/>
-            <field name="auto_create_picking">False</field>
-            <field name="auto_create_ddt">False</field>
-            <field name="auto_print_receipt">False</field>
-            <field name="receipt_format">48mm</field>
-            <field name="max_offline_days">1</field>
-            <field name="sync_interval">60</field>
-            <field name="offline_storage_limit">10</field>
-            <field name="enable_barcode_scanner">False</field>
-            <field name="enable_signature">False</field>
-            <field name="require_customer_selection">False</field>
-            <field name="allow_negative_stock">True</field>
-            <field name="auto_validate_orders">True</field>
-            <field name="backup_frequency">never</field>
-            <field name="active">False</field>
+        <!-- ================================= -->
+        <!-- PARAMETRI SISTEMA                 -->
+        <!-- ================================= -->
+
+        <!-- Parametro: Timeout sincronizzazione -->
+        <record id="param_sync_timeout" model="ir.config_parameter">
+            <field name="key">raccolta.sync_timeout</field>
+            <field name="value">300</field> <!-- 5 minuti -->
         </record>
 
-        <!-- Parametri di Sistema -->
-        <record id="ir_config_raccolta_version" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.version</field>
-            <field name="value">16.0.1.0.0</field>
-        </record>
-
-        <record id="ir_config_raccolta_api_timeout" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.api_timeout</field>
-            <field name="value">30</field>
-        </record>
-
-        <record id="ir_config_raccolta_max_retry" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.max_retry_attempts</field>
+        <!-- Parametro: Numero massimo tentativi sync -->
+        <record id="param_max_sync_retries" model="ir.config_parameter">
+            <field name="key">raccolta.max_sync_retries</field>
             <field name="value">3</field>
         </record>
 
-        <record id="ir_config_raccolta_debug_mode" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.debug_mode</field>
+        <!-- Parametro: Modalità debug -->
+        <record id="param_debug_mode" model="ir.config_parameter">
+            <field name="key">raccolta.debug_mode</field>
             <field name="value">False</field>
         </record>
 
-        <record id="ir_config_raccolta_offline_threshold" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.offline_threshold_mb</field>
-            <field name="value">50</field>
+        <!-- Parametro: Versione API -->
+        <record id="param_api_version" model="ir.config_parameter">
+            <field name="key">raccolta.api_version</field>
+            <field name="value">1.0</field>
         </record>
 
-        <record id="ir_config_raccolta_cache_duration" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.cache_duration_hours</field>
-            <field name="value">24</field>
+        <!-- ================================= -->
+        <!-- DATI DEMO MINIMAL                 -->
+        <!-- ================================= -->
+
+        <!-- Agente demo (solo in development) -->
+        <record id="demo_agent_user" model="res.users">
+            <field name="name">Demo Agente</field>
+            <field name="login">demo.agente</field>
+            <field name="email">demo.agente@example.com</field>
+            <field name="is_raccolta_agent" eval="True"/>
+            <field name="agent_code">DEMO</field>
+            <field name="company_id" ref="base.main_company"/>
+            <field name="groups_id" eval="[(4, ref('base.group_user')), (4, ref('group_raccolta_agent_data'))]"/>
         </record>
 
-        <record id="ir_config_raccolta_sync_batch_size" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.sync_batch_size</field>
-            <field name="value">50</field>
-        </record>
-
-        <record id="ir_config_raccolta_receipt_footer" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.receipt_footer_message</field>
-            <field name="value">Grazie per la fiducia!</field>
-        </record>
-
-        <record id="ir_config_raccolta_enable_analytics" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.enable_analytics</field>
-            <field name="value">True</field>
-        </record>
-
-        <record id="ir_config_raccolta_auto_backup" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.auto_backup_enabled</field>
-            <field name="value">True</field>
-        </record>
-
-        <!-- Configurazioni Stampanti -->
-        <record id="ir_config_raccolta_thermal_48mm" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.thermal_48mm_chars_per_line</field>
-            <field name="value">32</field>
-        </record>
-
-        <record id="ir_config_raccolta_thermal_80mm" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.thermal_80mm_chars_per_line</field>
-            <field name="value">48</field>
-        </record>
-
-        <record id="ir_config_raccolta_print_timeout" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.print_timeout_seconds</field>
-            <field name="value">30</field>
-        </record>
-
-        <!-- Configurazioni Sicurezza -->
-        <record id="ir_config_raccolta_session_timeout" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.session_timeout_minutes</field>
-            <field name="value">480</field>
-        </record>
-
-        <record id="ir_config_raccolta_max_concurrent_sessions" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.max_concurrent_sessions</field>
-            <field name="value">3</field>
-        </record>
-
-        <record id="ir_config_raccolta_enable_encryption" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.enable_offline_encryption</field>
-            <field name="value">True</field>
-        </record>
-
-        <!-- Configurazioni Performance -->
-        <record id="ir_config_raccolta_lazy_load" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.enable_lazy_loading</field>
-            <field name="value">True</field>
-        </record>
-
-        <record id="ir_config_raccolta_image_compression" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.image_compression_quality</field>
-            <field name="value">80</field>
-        </record>
-
-        <record id="ir_config_raccolta_prefetch_size" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.data_prefetch_size</field>
-            <field name="value">100</field>
-        </record>
-
-        <!-- Configurazioni Notifiche -->
-        <record id="ir_config_raccolta_notifications" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.enable_push_notifications</field>
-            <field name="value">True</field>
-        </record>
-
-        <record id="ir_config_raccolta_notification_sound" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.notification_sound_enabled</field>
-            <field name="value">True</field>
-        </record>
-
-        <record id="ir_config_raccolta_sync_notifications" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.sync_completion_notifications</field>
-            <field name="value">True</field>
-        </record>
-
-        <!-- Configurazioni UI -->
-        <record id="ir_config_raccolta_theme" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.default_theme</field>
-            <field name="value">light</field>
-        </record>
-
-        <record id="ir_config_raccolta_language" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.default_language</field>
-            <field name="value">it_IT</field>
-        </record>
-
-        <record id="ir_config_raccolta_currency" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.default_currency</field>
-            <field name="value">EUR</field>
-        </record>
-
-        <!-- Configurazioni Barcode -->
-        <record id="ir_config_raccolta_barcode_formats" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.supported_barcode_formats</field>
-            <field name="value">["EAN13", "EAN8", "CODE128", "CODE39", "UPC_A", "UPC_E"]</field>
-        </record>
-
-        <record id="ir_config_raccolta_scanner_timeout" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.barcode_scanner_timeout</field>
-            <field name="value">5</field>
-        </record>
-
-        <!-- Configurazioni Email -->
-        <record id="ir_config_raccolta_email_receipts" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.enable_email_receipts</field>
-            <field name="value">False</field>
-        </record>
-
-        <record id="ir_config_raccolta_email_template" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.email_receipt_template</field>
-            <field name="value">raccolta_ordini.email_template_receipt</field>
-        </record>
-
-        <!-- Configurazioni Backup -->
-        <record id="ir_config_raccolta_backup_retention" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.backup_retention_days</field>
-            <field name="value">30</field>
-        </record>
-
-        <record id="ir_config_raccolta_backup_compression" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.backup_compression_enabled</field>
-            <field name="value">True</field>
-        </record>
-
-        <!-- Configurazioni Logging -->
-        <record id="ir_config_raccolta_log_level" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.log_level</field>
-            <field name="value">INFO</field>
-        </record>
-
-        <record id="ir_config_raccolta_log_retention" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.log_retention_days</field>
-            <field name="value">7</field>
-        </record>
-
-        <!-- Configurazioni API -->
-        <record id="ir_config_raccolta_api_rate_limit" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.api_rate_limit_per_minute</field>
-            <field name="value">100</field>
-        </record>
-
-        <record id="ir_config_raccolta_api_version" model="ir.config_parameter">
-            <field name="key">raccolta_ordini.api_version</field>
-            <field name="value">v1</field>
+        <!-- Configurazione per agente demo -->
+        <record id="demo_agent_config" model="raccolta.config">
+            <field name="name">Configurazione Demo Agente</field>
+            <field name="user_id" ref="demo_agent_user"/>
+            <field name="company_id" ref="base.main_company"/>
+            <field name="active" eval="True"/>
+            <field name="use_agent_numbering" eval="True"/>
+            <field name="receipt_format">48mm</field>
+            <field name="auto_create_ddt" eval="True"/>
+            <field name="auto_print" eval="False"/> <!-- Non stampare in demo -->
         </record>
 
     </data>

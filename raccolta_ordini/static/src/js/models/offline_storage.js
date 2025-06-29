@@ -1,645 +1,757 @@
 /**
- * Gestione Storage Offline con IndexedDB + fallback localStorage
- * Pattern simile al Point of Sale ma ottimizzato per raccolta ordini
+ * RACCOLTA ORDINI - OFFLINE STORAGE
+ * Gestione storage offline con IndexedDB e fallback localStorage
  */
 
-class OfflineStorage {
-    constructor() {
-        this.dbName = 'RaccoltaOrdersDB';
-        this.dbVersion = 1;
-        this.db = null;
-        this.isSupported = this.checkSupport();
-    }
+(function() {
+    'use strict';
 
     /**
-     * Verifica supporto IndexedDB
+     * Classe per gestione storage offline
      */
-    checkSupport() {
-        return 'indexedDB' in window &&
-               'localStorage' in window &&
-               'sessionStorage' in window;
-    }
+    class OfflineStorage {
+        constructor() {
+            this.dbName = 'RaccoltaDB';
+            this.dbVersion = 1;
+            this.db = null;
+            this.isReady = false;
+            this.fallbackToLocalStorage = false;
 
-    /**
-     * Inizializza database IndexedDB
-     */
-    async initialize() {
-        if (!this.isSupported) {
-            console.warn('IndexedDB non supportato, usando localStorage');
-            return;
-        }
-
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open(this.dbName, this.dbVersion);
-
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => {
-                this.db = request.result;
-                resolve(this.db);
+            this.stores = {
+                orders: 'orders',
+                customers: 'customers',
+                products: 'products',
+                sessions: 'sessions',
+                counters: 'counters',
+                config: 'config',
+                sync_queue: 'sync_queue'
             };
-
-            request.onupgradeneeded = (event) => {
-                const db = event.target.result;
-
-                // Store per ordini
-                if (!db.objectStoreNames.contains('orders')) {
-                    const ordersStore = db.createObjectStore('orders', { keyPath: 'local_id' });
-                    ordersStore.createIndex('sync_status', 'sync_status', { unique: false });
-                    ordersStore.createIndex('date_order', 'date_order', { unique: false });
-                    ordersStore.createIndex('agent_id', 'agent_id', { unique: false });
-                }
-
-                // Store per picking
-                if (!db.objectStoreNames.contains('pickings')) {
-                    const pickingsStore = db.createObjectStore('pickings', { keyPath: 'local_id' });
-                    pickingsStore.createIndex('order_local_id', 'order_local_id', { unique: false });
-                    pickingsStore.createIndex('sync_status', 'sync_status', { unique: false });
-                }
-
-                // Store per DDT
-                if (!db.objectStoreNames.contains('ddts')) {
-                    const ddtsStore = db.createObjectStore('ddts', { keyPath: 'local_id' });
-                    ddtsStore.createIndex('picking_local_id', 'picking_local_id', { unique: false });
-                    ddtsStore.createIndex('sync_status', 'sync_status', { unique: false });
-                }
-
-                // Store per partners (clienti)
-                if (!db.objectStoreNames.contains('partners')) {
-                    const partnersStore = db.createObjectStore('partners', { keyPath: 'id' });
-                    partnersStore.createIndex('name', 'name', { unique: false });
-                    partnersStore.createIndex('customer_rank', 'customer_rank', { unique: false });
-                }
-
-                // Store per prodotti
-                if (!db.objectStoreNames.contains('products')) {
-                    const productsStore = db.createObjectStore('products', { keyPath: 'id' });
-                    productsStore.createIndex('name', 'name', { unique: false });
-                    productsStore.createIndex('default_code', 'default_code', { unique: false });
-                    productsStore.createIndex('sale_ok', 'sale_ok', { unique: false });
-                }
-
-                // Store per configurazioni
-                if (!db.objectStoreNames.contains('config')) {
-                    db.createObjectStore('config', { keyPath: 'key' });
-                }
-
-                // Store per sessioni
-                if (!db.objectStoreNames.contains('sessions')) {
-                    db.createObjectStore('sessions', { keyPath: 'id' });
-                }
-
-                // Store per contatori
-                if (!db.objectStoreNames.contains('counters')) {
-                    const countersStore = db.createObjectStore('counters', { keyPath: 'key' });
-                    countersStore.createIndex('agent_id', 'agent_id', { unique: false });
-                }
-            };
-        });
-    }
-
-    // === GESTIONE ORDINI ===
-
-    /**
-     * Salva ordine in storage
-     */
-    async saveOrder(order) {
-        order.last_update = new Date().toISOString();
-
-        if (this.db) {
-            return this.saveToIndexedDB('orders', order);
-        } else {
-            return this.saveToLocalStorage('orders', order.local_id, order);
         }
-    }
 
-    /**
-     * Recupera ordine per local_id
-     */
-    async getOrder(localId) {
-        if (this.db) {
-            return this.getFromIndexedDB('orders', localId);
-        } else {
-            return this.getFromLocalStorage('orders', localId);
-        }
-    }
-
-    /**
-     * Recupera tutti gli ordini
-     */
-    async getAllOrders() {
-        if (this.db) {
-            return this.getAllFromIndexedDB('orders');
-        } else {
-            return this.getAllFromLocalStorage('orders');
-        }
-    }
-
-    /**
-     * Recupera ordini da sincronizzare
-     */
-    async getPendingOrders() {
-        if (this.db) {
-            return this.getIndexedData('orders', 'sync_status', 'pending');
-        } else {
-            const orders = await this.getAllOrders();
-            return orders.filter(order => order.sync_status === 'pending');
-        }
-    }
-
-    /**
-     * Marca ordine come sincronizzato
-     */
-    async markOrderAsSynced(localId, odooId = null) {
-        const order = await this.getOrder(localId);
-        if (order) {
-            order.sync_status = 'synced';
-            order.odoo_id = odooId;
-            order.synced_at = new Date().toISOString();
-            await this.saveOrder(order);
-        }
-    }
-
-    // === GESTIONE PICKING ===
-
-    async savePicking(picking) {
-        picking.last_update = new Date().toISOString();
-
-        if (this.db) {
-            return this.saveToIndexedDB('pickings', picking);
-        } else {
-            return this.saveToLocalStorage('pickings', picking.local_id, picking);
-        }
-    }
-
-    async getPicking(localId) {
-        if (this.db) {
-            return this.getFromIndexedDB('pickings', localId);
-        } else {
-            return this.getFromLocalStorage('pickings', localId);
-        }
-    }
-
-    async getPickingsByOrder(orderLocalId) {
-        if (this.db) {
-            return this.getIndexedData('pickings', 'order_local_id', orderLocalId);
-        } else {
-            const pickings = await this.getAllFromLocalStorage('pickings');
-            return pickings.filter(p => p.order_local_id === orderLocalId);
-        }
-    }
-
-    // === GESTIONE DDT ===
-
-    async saveDdt(ddt) {
-        ddt.last_update = new Date().toISOString();
-
-        if (this.db) {
-            return this.saveToIndexedDB('ddts', ddt);
-        } else {
-            return this.saveToLocalStorage('ddts', ddt.local_id, ddt);
-        }
-    }
-
-    async getDdt(localId) {
-        if (this.db) {
-            return this.getFromIndexedDB('ddts', localId);
-        } else {
-            return this.getFromLocalStorage('ddts', localId);
-        }
-    }
-
-    async getDdtsByPicking(pickingLocalId) {
-        if (this.db) {
-            return this.getIndexedData('ddts', 'picking_local_id', pickingLocalId);
-        } else {
-            const ddts = await this.getAllFromLocalStorage('ddts');
-            return ddts.filter(d => d.picking_local_id === pickingLocalId);
-        }
-    }
-
-    // === GESTIONE PARTNERS ===
-
-    async savePartners(partners) {
-        if (this.db) {
-            const transaction = this.db.transaction(['partners'], 'readwrite');
-            const store = transaction.objectStore('partners');
-
-            for (const partner of partners) {
-                await store.put(partner);
+        /**
+         * Inizializza storage
+         */
+        async init() {
+            try {
+                await this.initIndexedDB();
+                this.isReady = true;
+                console.log('Storage offline pronto (IndexedDB)');
+            } catch (error) {
+                console.warn('IndexedDB non disponibile, uso localStorage:', error);
+                this.fallbackToLocalStorage = true;
+                this.isReady = true;
+                console.log('Storage offline pronto (localStorage)');
             }
-
-            return transaction.complete;
-        } else {
-            localStorage.setItem('raccolta_partners', JSON.stringify(partners));
-            localStorage.setItem('raccolta_partners_updated', new Date().toISOString());
         }
-    }
 
-    async getPartners() {
-        if (this.db) {
-            return this.getAllFromIndexedDB('partners');
-        } else {
-            const stored = localStorage.getItem('raccolta_partners');
-            return stored ? JSON.parse(stored) : [];
-        }
-    }
+        /**
+         * Inizializza IndexedDB
+         */
+        initIndexedDB() {
+            return new Promise((resolve, reject) => {
+                if (!window.indexedDB) {
+                    reject(new Error('IndexedDB non supportato'));
+                    return;
+                }
 
-    async searchPartners(query) {
-        const partners = await this.getPartners();
-        const lowQuery = query.toLowerCase();
+                const request = window.indexedDB.open(this.dbName, this.dbVersion);
 
-        return partners.filter(partner =>
-            partner.name.toLowerCase().includes(lowQuery) ||
-            (partner.vat && partner.vat.toLowerCase().includes(lowQuery)) ||
-            (partner.email && partner.email.toLowerCase().includes(lowQuery))
-        );
-    }
+                request.onerror = () => {
+                    reject(new Error('Errore apertura IndexedDB'));
+                };
 
-    // === GESTIONE PRODOTTI ===
+                request.onsuccess = (event) => {
+                    this.db = event.target.result;
+                    resolve();
+                };
 
-    async saveProducts(products) {
-        if (this.db) {
-            const transaction = this.db.transaction(['products'], 'readwrite');
-            const store = transaction.objectStore('products');
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
 
-            for (const product of products) {
-                await store.put(product);
-            }
+                    // Store ordini
+                    if (!db.objectStoreNames.contains(this.stores.orders)) {
+                        const ordersStore = db.createObjectStore(this.stores.orders, {
+                            keyPath: 'id'
+                        });
+                        ordersStore.createIndex('local_id', 'local_id', { unique: true });
+                        ordersStore.createIndex('sync_status', 'sync_status');
+                        ordersStore.createIndex('created_at', 'created_at');
+                    }
 
-            return transaction.complete;
-        } else {
-            localStorage.setItem('raccolta_products', JSON.stringify(products));
-            localStorage.setItem('raccolta_products_updated', new Date().toISOString());
-        }
-    }
+                    // Store clienti
+                    if (!db.objectStoreNames.contains(this.stores.customers)) {
+                        const customersStore = db.createObjectStore(this.stores.customers, {
+                            keyPath: 'id'
+                        });
+                        customersStore.createIndex('name', 'name');
+                        customersStore.createIndex('vat', 'vat');
+                    }
 
-    async getProducts() {
-        if (this.db) {
-            return this.getAllFromIndexedDB('products');
-        } else {
-            const stored = localStorage.getItem('raccolta_products');
-            return stored ? JSON.parse(stored) : [];
-        }
-    }
+                    // Store prodotti
+                    if (!db.objectStoreNames.contains(this.stores.products)) {
+                        const productsStore = db.createObjectStore(this.stores.products, {
+                            keyPath: 'id'
+                        });
+                        productsStore.createIndex('name', 'name');
+                        productsStore.createIndex('barcode', 'barcode');
+                        productsStore.createIndex('category', 'categ_id');
+                    }
 
-    async searchProducts(query) {
-        const products = await this.getProducts();
-        const lowQuery = query.toLowerCase();
+                    // Store sessioni
+                    if (!db.objectStoreNames.contains(this.stores.sessions)) {
+                        const sessionsStore = db.createObjectStore(this.stores.sessions, {
+                            keyPath: 'id'
+                        });
+                        sessionsStore.createIndex('user_id', 'user_id');
+                        sessionsStore.createIndex('state', 'state');
+                    }
 
-        return products.filter(product =>
-            product.name.toLowerCase().includes(lowQuery) ||
-            (product.default_code && product.default_code.toLowerCase().includes(lowQuery)) ||
-            (product.barcode && product.barcode.includes(query))
-        );
-    }
+                    // Store contatori
+                    if (!db.objectStoreNames.contains(this.stores.counters)) {
+                        const countersStore = db.createObjectStore(this.stores.counters, {
+                            keyPath: 'key'
+                        });
+                        countersStore.createIndex('user_id', 'user_id');
+                        countersStore.createIndex('type', 'type');
+                    }
 
-    async getProductById(productId) {
-        if (this.db) {
-            return this.getFromIndexedDB('products', productId);
-        } else {
-            const products = await this.getProducts();
-            return products.find(p => p.id === productId);
-        }
-    }
+                    // Store configurazione
+                    if (!db.objectStoreNames.contains(this.stores.config)) {
+                        db.createObjectStore(this.stores.config, {
+                            keyPath: 'key'
+                        });
+                    }
 
-    // === GESTIONE CONFIGURAZIONI ===
-
-    async saveConfig(config) {
-        const configData = {
-            key: 'main_config',
-            data: config,
-            updated_at: new Date().toISOString()
-        };
-
-        if (this.db) {
-            return this.saveToIndexedDB('config', configData);
-        } else {
-            localStorage.setItem('raccolta_config', JSON.stringify(configData));
-        }
-    }
-
-    async getConfig() {
-        if (this.db) {
-            const result = await this.getFromIndexedDB('config', 'main_config');
-            return result ? result.data : null;
-        } else {
-            const stored = localStorage.getItem('raccolta_config');
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                return parsed.data;
-            }
-            return null;
-        }
-    }
-
-    async saveDdtConfig(ddtConfig) {
-        const configData = {
-            key: 'ddt_config',
-            data: ddtConfig,
-            updated_at: new Date().toISOString()
-        };
-
-        if (this.db) {
-            return this.saveToIndexedDB('config', configData);
-        } else {
-            localStorage.setItem('raccolta_ddt_config', JSON.stringify(configData));
-        }
-    }
-
-    async getDdtConfig() {
-        if (this.db) {
-            const result = await this.getFromIndexedDB('config', 'ddt_config');
-            return result ? result.data : null;
-        } else {
-            const stored = localStorage.getItem('raccolta_ddt_config');
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                return parsed.data;
-            }
-            return null;
-        }
-    }
-
-    // === GESTIONE SESSIONI ===
-
-    async saveSession(session) {
-        session.updated_at = new Date().toISOString();
-
-        if (this.db) {
-            return this.saveToIndexedDB('sessions', session);
-        } else {
-            sessionStorage.setItem('raccolta_current_session', JSON.stringify(session));
-        }
-    }
-
-    async getSession() {
-        if (this.db) {
-            // Cerca sessione attiva più recente
-            const sessions = await this.getAllFromIndexedDB('sessions');
-            return sessions.find(s => s.state === 'opened') || sessions[sessions.length - 1];
-        } else {
-            const stored = sessionStorage.getItem('raccolta_current_session');
-            return stored ? JSON.parse(stored) : null;
-        }
-    }
-
-    // === GESTIONE CONTATORI ===
-
-    async saveCounter(key, value, agentId) {
-        const counterData = {
-            key: key,
-            value: value,
-            agent_id: agentId,
-            updated_at: new Date().toISOString()
-        };
-
-        if (this.db) {
-            return this.saveToIndexedDB('counters', counterData);
-        } else {
-            const counters = this.getCountersFromStorage();
-            counters[key] = counterData;
-            localStorage.setItem('raccolta_counters', JSON.stringify(counters));
-        }
-    }
-
-    async getCounter(key) {
-        if (this.db) {
-            return this.getFromIndexedDB('counters', key);
-        } else {
-            const counters = this.getCountersFromStorage();
-            return counters[key] || null;
-        }
-    }
-
-    async getAllCounters(agentId = null) {
-        if (this.db) {
-            if (agentId) {
-                return this.getIndexedData('counters', 'agent_id', agentId);
-            } else {
-                return this.getAllFromIndexedDB('counters');
-            }
-        } else {
-            const counters = this.getCountersFromStorage();
-            const result = Object.values(counters);
-
-            if (agentId) {
-                return result.filter(c => c.agent_id === agentId);
-            }
-            return result;
-        }
-    }
-
-    getCountersFromStorage() {
-        const stored = localStorage.getItem('raccolta_counters');
-        return stored ? JSON.parse(stored) : {};
-    }
-
-    // === METODI HELPER INDEXEDDB ===
-
-    async saveToIndexedDB(storeName, data) {
-        if (!this.db) return false;
-
-        return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction([storeName], 'readwrite');
-            const store = transaction.objectStore(storeName);
-            const request = store.put(data);
-
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve(request.result);
-        });
-    }
-
-    async getFromIndexedDB(storeName, key) {
-        if (!this.db) return null;
-
-        return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction([storeName], 'readonly');
-            const store = transaction.objectStore(storeName);
-            const request = store.get(key);
-
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve(request.result);
-        });
-    }
-
-    async getAllFromIndexedDB(storeName) {
-        if (!this.db) return [];
-
-        return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction([storeName], 'readonly');
-            const store = transaction.objectStore(storeName);
-            const request = store.getAll();
-
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve(request.result || []);
-        });
-    }
-
-    async getIndexedData(storeName, indexName, value) {
-        if (!this.db) return [];
-
-        return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction([storeName], 'readonly');
-            const store = transaction.objectStore(storeName);
-            const index = store.index(indexName);
-            const request = index.getAll(value);
-
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve(request.result || []);
-        });
-    }
-
-    // === METODI HELPER LOCALSTORAGE ===
-
-    async saveToLocalStorage(category, key, data) {
-        try {
-            const storageKey = `raccolta_${category}`;
-            const existing = JSON.parse(localStorage.getItem(storageKey) || '{}');
-            existing[key] = data;
-            localStorage.setItem(storageKey, JSON.stringify(existing));
-            return true;
-        } catch (error) {
-            console.error('Errore salvataggio localStorage:', error);
-            return false;
-        }
-    }
-
-    async getFromLocalStorage(category, key) {
-        try {
-            const storageKey = `raccolta_${category}`;
-            const existing = JSON.parse(localStorage.getItem(storageKey) || '{}');
-            return existing[key] || null;
-        } catch (error) {
-            console.error('Errore lettura localStorage:', error);
-            return null;
-        }
-    }
-
-    async getAllFromLocalStorage(category) {
-        try {
-            const storageKey = `raccolta_${category}`;
-            const existing = JSON.parse(localStorage.getItem(storageKey) || '{}');
-            return Object.values(existing);
-        } catch (error) {
-            console.error('Errore lettura localStorage:', error);
-            return [];
-        }
-    }
-
-    // === UTILITY ===
-
-    /**
-     * Pulisce storage vecchio
-     */
-    async cleanup(daysOld = 30) {
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - daysOld);
-        const cutoffISO = cutoffDate.toISOString();
-
-        // Pulisce ordini vecchi sincronizzati
-        const orders = await this.getAllOrders();
-        const ordersToKeep = orders.filter(order =>
-            order.sync_status === 'pending' ||
-            order.synced_at > cutoffISO
-        );
-
-        // Risalva solo quelli da tenere
-        if (this.db) {
-            const transaction = this.db.transaction(['orders'], 'readwrite');
-            const store = transaction.objectStore(storeName);
-            await store.clear();
-
-            for (const order of ordersToKeep) {
-                await store.put(order);
-            }
-        } else {
-            const storageKey = 'raccolta_orders';
-            const ordersMap = {};
-            ordersToKeep.forEach(order => {
-                ordersMap[order.local_id] = order;
+                    // Store coda sincronizzazione
+                    if (!db.objectStoreNames.contains(this.stores.sync_queue)) {
+                        const syncStore = db.createObjectStore(this.stores.sync_queue, {
+                            keyPath: 'id',
+                            autoIncrement: true
+                        });
+                        syncStore.createIndex('type', 'type');
+                        syncStore.createIndex('created_at', 'created_at');
+                    }
+                };
             });
-            localStorage.setItem(storageKey, JSON.stringify(ordersMap));
         }
-    }
 
-    /**
-     * Calcola dimensione storage utilizzato
-     */
-    async getStorageSize() {
-        if (this.db) {
-            // Stima approssimativa per IndexedDB
-            const orders = await this.getAllOrders();
-            const partners = await this.getPartners();
-            const products = await this.getProducts();
+        /**
+         * Salva elemento
+         */
+        async save(storeName, data) {
+            if (!this.isReady) {
+                throw new Error('Storage non inizializzato');
+            }
 
-            const totalItems = orders.length + partners.length + products.length;
-            return {
-                estimated: true,
-                items: totalItems,
-                size_mb: Math.round(totalItems * 0.5) // ~0.5KB per item
+            if (this.fallbackToLocalStorage) {
+                return this.saveToLocalStorage(storeName, data);
+            }
+
+            return new Promise((resolve, reject) => {
+                const transaction = this.db.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+
+                const request = store.put(data);
+
+                request.onsuccess = () => resolve(data);
+                request.onerror = () => reject(new Error('Errore salvataggio'));
+            });
+        }
+
+        /**
+         * Leggi elemento per ID
+         */
+        async get(storeName, id) {
+            if (!this.isReady) {
+                throw new Error('Storage non inizializzato');
+            }
+
+            if (this.fallbackToLocalStorage) {
+                return this.getFromLocalStorage(storeName, id);
+            }
+
+            return new Promise((resolve, reject) => {
+                const transaction = this.db.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+
+                const request = store.get(id);
+
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(new Error('Errore lettura'));
+            });
+        }
+
+        /**
+         * Leggi tutti gli elementi
+         */
+        async getAll(storeName, limit = null) {
+            if (!this.isReady) {
+                throw new Error('Storage non inizializzato');
+            }
+
+            if (this.fallbackToLocalStorage) {
+                return this.getAllFromLocalStorage(storeName, limit);
+            }
+
+            return new Promise((resolve, reject) => {
+                const transaction = this.db.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+
+                const request = limit ? store.getAll(null, limit) : store.getAll();
+
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(new Error('Errore lettura'));
+            });
+        }
+
+        /**
+         * Cerca elementi per indice
+         */
+        async findByIndex(storeName, indexName, value) {
+            if (!this.isReady) {
+                throw new Error('Storage non inizializzato');
+            }
+
+            if (this.fallbackToLocalStorage) {
+                return this.findByIndexLocalStorage(storeName, indexName, value);
+            }
+
+            return new Promise((resolve, reject) => {
+                const transaction = this.db.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+                const index = store.index(indexName);
+
+                const request = index.getAll(value);
+
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(new Error('Errore ricerca'));
+            });
+        }
+
+        /**
+         * Cancella elemento
+         */
+        async delete(storeName, id) {
+            if (!this.isReady) {
+                throw new Error('Storage non inizializzato');
+            }
+
+            if (this.fallbackToLocalStorage) {
+                return this.deleteFromLocalStorage(storeName, id);
+            }
+
+            return new Promise((resolve, reject) => {
+                const transaction = this.db.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+
+                const request = store.delete(id);
+
+                request.onsuccess = () => resolve(true);
+                request.onerror = () => reject(new Error('Errore cancellazione'));
+            });
+        }
+
+        /**
+         * Cancella tutti gli elementi
+         */
+        async clear(storeName) {
+            if (!this.isReady) {
+                throw new Error('Storage non inizializzato');
+            }
+
+            if (this.fallbackToLocalStorage) {
+                return this.clearLocalStorage(storeName);
+            }
+
+            return new Promise((resolve, reject) => {
+                const transaction = this.db.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+
+                const request = store.clear();
+
+                request.onsuccess = () => resolve(true);
+                request.onerror = () => reject(new Error('Errore pulizia'));
+            });
+        }
+
+        // ===== METODI LOCALSTORAGE FALLBACK =====
+
+        /**
+         * Salva su localStorage
+         */
+        saveToLocalStorage(storeName, data) {
+            try {
+                const key = `raccolta_${storeName}_${data.id}`;
+                localStorage.setItem(key, JSON.stringify(data));
+
+                // Aggiorna indice
+                this.updateLocalStorageIndex(storeName, data.id);
+
+                return Promise.resolve(data);
+            } catch (error) {
+                return Promise.reject(error);
+            }
+        }
+
+        /**
+         * Leggi da localStorage
+         */
+        getFromLocalStorage(storeName, id) {
+            try {
+                const key = `raccolta_${storeName}_${id}`;
+                const data = localStorage.getItem(key);
+                return Promise.resolve(data ? JSON.parse(data) : null);
+            } catch (error) {
+                return Promise.reject(error);
+            }
+        }
+
+        /**
+         * Leggi tutti da localStorage
+         */
+        getAllFromLocalStorage(storeName, limit = null) {
+            try {
+                const indexKey = `raccolta_${storeName}_index`;
+                const indexData = localStorage.getItem(indexKey);
+                const ids = indexData ? JSON.parse(indexData) : [];
+
+                const results = [];
+                const maxItems = limit || ids.length;
+
+                for (let i = 0; i < Math.min(maxItems, ids.length); i++) {
+                    const key = `raccolta_${storeName}_${ids[i]}`;
+                    const data = localStorage.getItem(key);
+                    if (data) {
+                        results.push(JSON.parse(data));
+                    }
+                }
+
+                return Promise.resolve(results);
+            } catch (error) {
+                return Promise.reject(error);
+            }
+        }
+
+        /**
+         * Cerca per indice su localStorage
+         */
+        findByIndexLocalStorage(storeName, indexName, value) {
+            return this.getAllFromLocalStorage(storeName).then(items => {
+                return items.filter(item => item[indexName] === value);
+            });
+        }
+
+        /**
+         * Cancella da localStorage
+         */
+        deleteFromLocalStorage(storeName, id) {
+            try {
+                const key = `raccolta_${storeName}_${id}`;
+                localStorage.removeItem(key);
+
+                // Aggiorna indice
+                this.removeFromLocalStorageIndex(storeName, id);
+
+                return Promise.resolve(true);
+            } catch (error) {
+                return Promise.reject(error);
+            }
+        }
+
+        /**
+         * Pulisci localStorage
+         */
+        clearLocalStorage(storeName) {
+            try {
+                const indexKey = `raccolta_${storeName}_index`;
+                const indexData = localStorage.getItem(indexKey);
+                const ids = indexData ? JSON.parse(indexData) : [];
+
+                // Rimuovi tutti gli elementi
+                ids.forEach(id => {
+                    const key = `raccolta_${storeName}_${id}`;
+                    localStorage.removeItem(key);
+                });
+
+                // Rimuovi indice
+                localStorage.removeItem(indexKey);
+
+                return Promise.resolve(true);
+            } catch (error) {
+                return Promise.reject(error);
+            }
+        }
+
+        /**
+         * Aggiorna indice localStorage
+         */
+        updateLocalStorageIndex(storeName, id) {
+            const indexKey = `raccolta_${storeName}_index`;
+            const indexData = localStorage.getItem(indexKey);
+            const ids = indexData ? JSON.parse(indexData) : [];
+
+            if (!ids.includes(id)) {
+                ids.push(id);
+                localStorage.setItem(indexKey, JSON.stringify(ids));
+            }
+        }
+
+        /**
+         * Rimuovi da indice localStorage
+         */
+        removeFromLocalStorageIndex(storeName, id) {
+            const indexKey = `raccolta_${storeName}_index`;
+            const indexData = localStorage.getItem(indexKey);
+            const ids = indexData ? JSON.parse(indexData) : [];
+
+            const index = ids.indexOf(id);
+            if (index > -1) {
+                ids.splice(index, 1);
+                localStorage.setItem(indexKey, JSON.stringify(ids));
+            }
+        }
+
+        // ===== METODI SPECIFICI BUSINESS =====
+
+        /**
+         * Salva ordine
+         */
+        async saveOrder(order) {
+            order.updated_at = new Date().toISOString();
+            return this.save(this.stores.orders, order);
+        }
+
+        /**
+         * Ottieni ordini pending sync
+         */
+        async getPendingOrders() {
+            return this.findByIndex(this.stores.orders, 'sync_status', 'pending');
+        }
+
+        /**
+         * Salva cliente
+         */
+        async saveCustomer(customer) {
+            return this.save(this.stores.customers, customer);
+        }
+
+        /**
+         * Cerca clienti per nome
+         */
+        async searchCustomers(query) {
+            const customers = await this.getAll(this.stores.customers);
+            return customers.filter(customer =>
+                customer.name.toLowerCase().includes(query.toLowerCase())
+            );
+        }
+
+        /**
+         * Salva prodotto
+         */
+        async saveProduct(product) {
+            return this.save(this.stores.products, product);
+        }
+
+        /**
+         * Cerca prodotti per barcode
+         */
+        async findProductByBarcode(barcode) {
+            const products = await this.findByIndex(this.stores.products, 'barcode', barcode);
+            return products.length > 0 ? products[0] : null;
+        }
+
+        /**
+         * Ottieni configurazione
+         */
+        async getConfig() {
+            return this.get(this.stores.config, 'app_config');
+        }
+
+        /**
+         * Salva configurazione
+         */
+        async saveConfig(config) {
+            return this.save(this.stores.config, {
+                key: 'app_config',
+                ...config,
+                updated_at: new Date().toISOString()
+            });
+        }
+
+        /**
+         * Ottieni sessione
+         */
+        async getSession() {
+            return this.get(this.stores.config, 'current_session');
+        }
+
+        /**
+         * Salva sessione
+         */
+        async saveSession(session) {
+            return this.save(this.stores.config, {
+                key: 'current_session',
+                ...session,
+                updated_at: new Date().toISOString()
+            });
+        }
+
+        /**
+         * Aggiungi elemento a coda sync
+         */
+        async addToSyncQueue(type, data, priority = 'normal') {
+            const item = {
+                type,
+                data,
+                priority,
+                created_at: new Date().toISOString(),
+                attempts: 0,
+                max_attempts: 3
             };
-        } else {
-            // Calcolo preciso per localStorage
-            let totalSize = 0;
-            for (let key in localStorage) {
-                if (key.startsWith('raccolta_')) {
-                    totalSize += localStorage[key].length;
+
+            return this.save(this.stores.sync_queue, item);
+        }
+
+        /**
+         * Ottieni coda sync
+         */
+        async getSyncQueue() {
+            const items = await this.getAll(this.stores.sync_queue);
+
+            // Ordina per priorità e data
+            return items.sort((a, b) => {
+                const priorities = { high: 3, normal: 2, low: 1 };
+                const aPriority = priorities[a.priority] || 2;
+                const bPriority = priorities[b.priority] || 2;
+
+                if (aPriority !== bPriority) {
+                    return bPriority - aPriority;
+                }
+
+                return new Date(a.created_at) - new Date(b.created_at);
+            });
+        }
+
+        /**
+         * Rimuovi da coda sync
+         */
+        async removeFromSyncQueue(id) {
+            return this.delete(this.stores.sync_queue, id);
+        }
+
+        /**
+         * Ottieni contatori
+         */
+        async getAllCounters(userId) {
+            return this.findByIndex(this.stores.counters, 'user_id', userId);
+        }
+
+        /**
+         * Ottieni contatore specifico
+         */
+        async getCounter(key) {
+            return this.get(this.stores.counters, key);
+        }
+
+        /**
+         * Salva contatore
+         */
+        async saveCounter(counter) {
+            counter.updated_at = new Date().toISOString();
+            return this.save(this.stores.counters, counter);
+        }
+
+        /**
+         * Incrementa contatore
+         */
+        async incrementCounter(key, increment = 1) {
+            const counter = await this.getCounter(key);
+            if (counter) {
+                counter.value += increment;
+                counter.updated_at = new Date().toISOString();
+                return this.save(this.stores.counters, counter);
+            }
+            return null;
+        }
+
+        /**
+         * Statistiche storage
+         */
+        async getStorageStats() {
+            const stats = {};
+
+            for (const [name, storeName] of Object.entries(this.stores)) {
+                try {
+                    const items = await this.getAll(storeName);
+                    stats[name] = {
+                        count: items.length,
+                        size: JSON.stringify(items).length
+                    };
+                } catch (error) {
+                    stats[name] = { count: 0, size: 0, error: error.message };
                 }
             }
 
-            return {
-                estimated: false,
-                size_bytes: totalSize,
-                size_mb: Math.round(totalSize / 1024 / 1024 * 100) / 100
-            };
+            return stats;
         }
-    }
 
-    /**
-     * Esporta tutti i dati per backup
-     */
-    async exportAllData() {
-        const data = {
-            timestamp: new Date().toISOString(),
-            orders: await this.getAllOrders(),
-            partners: await this.getPartners(),
-            products: await this.getProducts(),
-            config: await this.getConfig(),
-            session: await this.getSession(),
-            counters: await this.getAllCounters()
-        };
+        /**
+         * Pulisci dati vecchi
+         */
+        async cleanup(daysOld = 30) {
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - daysOld);
+            const cutoffISO = cutoffDate.toISOString();
 
-        return data;
-    }
+            const results = {};
 
-    /**
-     * Importa dati da backup
-     */
-    async importAllData(backupData) {
-        if (backupData.orders) {
-            for (const order of backupData.orders) {
-                await this.saveOrder(order);
+            // Pulisci ordini sincronizzati vecchi
+            try {
+                const orders = await this.getAll(this.stores.orders);
+                const toDelete = orders.filter(order =>
+                    order.sync_status === 'synced' &&
+                    order.updated_at < cutoffISO
+                );
+
+                for (const order of toDelete) {
+                    await this.delete(this.stores.orders, order.id);
+                }
+
+                results.orders_cleaned = toDelete.length;
+            } catch (error) {
+                results.orders_error = error.message;
             }
+
+            // Pulisci elementi coda sync falliti
+            try {
+                const queueItems = await this.getAll(this.stores.sync_queue);
+                const toDelete = queueItems.filter(item =>
+                    item.attempts >= item.max_attempts &&
+                    item.created_at < cutoffISO
+                );
+
+                for (const item of toDelete) {
+                    await this.delete(this.stores.sync_queue, item.id);
+                }
+
+                results.sync_queue_cleaned = toDelete.length;
+            } catch (error) {
+                results.sync_queue_error = error.message;
+            }
+
+            return results;
         }
 
-        if (backupData.partners) {
-            await this.savePartners(backupData.partners);
+        /**
+         * Export dati per backup
+         */
+        async exportData() {
+            const exportData = {
+                version: 1,
+                exported_at: new Date().toISOString(),
+                data: {}
+            };
+
+            for (const [name, storeName] of Object.entries(this.stores)) {
+                try {
+                    exportData.data[name] = await this.getAll(storeName);
+                } catch (error) {
+                    console.warn(`Errore export ${name}:`, error);
+                    exportData.data[name] = [];
+                }
+            }
+
+            return exportData;
         }
 
-        if (backupData.products) {
-            await this.saveProducts(backupData.products);
+        /**
+         * Import dati da backup
+         */
+        async importData(exportData) {
+            if (!exportData.data) {
+                throw new Error('Formato backup non valido');
+            }
+
+            const results = {};
+
+            for (const [name, items] of Object.entries(exportData.data)) {
+                if (!this.stores[name]) {
+                    console.warn(`Store sconosciuto: ${name}`);
+                    continue;
+                }
+
+                try {
+                    // Pulisci store esistente
+                    await this.clear(this.stores[name]);
+
+                    // Importa elementi
+                    let imported = 0;
+                    for (const item of items) {
+                        await this.save(this.stores[name], item);
+                        imported++;
+                    }
+
+                    results[name] = { imported, total: items.length };
+                } catch (error) {
+                    results[name] = { error: error.message };
+                }
+            }
+
+            return results;
         }
 
-        if (backupData.config) {
-            await this.saveConfig(backupData.config);
-        }
+        /**
+         * Verifica integrità storage
+         */
+        async verifyIntegrity() {
+            const results = {
+                total_stores: Object.keys(this.stores).length,
+                healthy_stores: 0,
+                errors: []
+            };
 
-        if (backupData.session) {
-            await this.saveSession(backupData.session);
-        }
+            for (const [name, storeName] of Object.entries(this.stores)) {
+                try {
+                    const items = await this.getAll(storeName);
 
-        return true;
+                    // Verifica struttura base
+                    let validItems = 0;
+                    for (const item of items) {
+                        if (item && typeof item === 'object') {
+                            validItems++;
+                        }
+                    }
+
+                    if (validItems === items.length) {
+                        results.healthy_stores++;
+                    } else {
+                        results.errors.push(`${name}: ${items.length - validItems} elementi corrotti`);
+                    }
+
+                } catch (error) {
+                    results.errors.push(`${name}: ${error.message}`);
+                }
+            }
+
+            results.is_healthy = results.errors.length === 0;
+            return results;
+        }
     }
-}
 
-export { OfflineStorage };
+    // Registra il modello nell'app
+    if (window.RaccoltaApp) {
+        window.RaccoltaApp.OfflineStorage = OfflineStorage;
+
+        // Auto-registrazione quando app è pronta
+        if (window.RaccoltaApp.instance) {
+            const storage = new OfflineStorage();
+            storage.init().then(() => {
+                window.RaccoltaApp.instance.registerModel('storage', storage);
+            });
+        }
+    }
+
+    // Export per uso diretto
+    window.OfflineStorage = OfflineStorage;
+
+})();

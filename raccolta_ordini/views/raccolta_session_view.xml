@@ -1,362 +1,293 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- ================================= -->
-    <!-- VISTA FORM SESSIONI               -->
-    <!-- ================================= -->
+    <data>
 
-    <record id="view_raccolta_session_form" model="ir.ui.view">
-        <field name="name">raccolta.session.form</field>
-        <field name="model">raccolta.session</field>
-        <field name="arch" type="xml">
-            <form string="Sessione Raccolta Ordini">
-                <header>
-                    <button name="action_open" type="object" string="Apri Sessione"
-                            class="btn-primary" attrs="{'invisible': [('state', '!=', 'closed')]}"/>
-                    <button name="action_close" type="object" string="Chiudi Sessione"
-                            class="btn-secondary" attrs="{'invisible': [('state', '!=', 'opened')]}"/>
-                    <button name="action_rescue" type="object" string="Recupera Sessione"
-                            class="btn-warning" attrs="{'invisible': [('state', '!=', 'rescue')]}"/>
-                    <field name="state" widget="statusbar" statusbar_visible="closed,opened,closing"/>
-                </header>
+        <!-- ================================= -->
+        <!-- SESSIONE RACCOLTA: FORM           -->
+        <!-- ================================= -->
 
-                <sheet>
-                    <div class="oe_button_box" name="button_box">
-                        <button type="object" name="action_view_orders" class="oe_stat_button" icon="fa-shopping-cart">
-                            <field name="order_count" widget="statinfo" string="Ordini"/>
-                        </button>
-                        <button type="object" name="action_view_pickings" class="oe_stat_button" icon="fa-truck">
-                            <field name="picking_count" widget="statinfo" string="Picking"/>
-                        </button>
-                        <button type="object" name="action_view_ddts" class="oe_stat_button" icon="fa-file-text-o">
-                            <field name="ddt_count" widget="statinfo" string="DDT"/>
-                        </button>
-                        <button type="object" name="action_view_sync_status" class="oe_stat_button" icon="fa-refresh">
-                            <field name="pending_sync_count" widget="statinfo" string="Da Sincronizzare"/>
-                        </button>
-                    </div>
+        <record id="view_raccolta_session_form" model="ir.ui.view">
+            <field name="name">raccolta.session.form</field>
+            <field name="model">raccolta.session</field>
+            <field name="arch" type="xml">
+                <form string="Sessione Raccolta Ordini">
+                    <header>
+                        <!-- Actions based on state -->
+                        <button name="action_open" type="object"
+                                string="Apri Sessione" class="btn-primary"
+                                attrs="{'invisible': [('state', '!=', 'opening_control')]}"/>
 
-                    <widget name="web_ribbon" title="Sessione Aperta" bg_color="bg-success"
-                            attrs="{'invisible': [('state', '!=', 'opened')]}"/>
-                    <widget name="web_ribbon" title="Sessione Chiusa" bg_color="bg-secondary"
-                            attrs="{'invisible': [('state', '!=', 'closed')]}"/>
-                    <widget name="web_ribbon" title="In Recupero" bg_color="bg-warning"
-                            attrs="{'invisible': [('state', '!=', 'rescue')]}"/>
+                        <button name="action_close" type="object"
+                                string="Chiudi Sessione" class="btn-secondary"
+                                attrs="{'invisible': [('state', 'not in', ['opened', 'closing_control'])]}"/>
 
-                    <div class="oe_title">
-                        <h1>
-                            <field name="name" readonly="1"/>
-                        </h1>
-                    </div>
+                        <button name="action_rescue" type="object"
+                                string="Modalità Recupero" class="btn-warning"
+                                attrs="{'invisible': [('state', '!=', 'opened')]}"/>
 
-                    <group>
-                        <group string="Informazioni Base">
-                            <field name="config_id" attrs="{'readonly': [('state', '!=', 'closed')]}"/>
-                            <field name="user_id" attrs="{'readonly': [('state', '!=', 'closed')]}"/>
-                            <field name="company_id" readonly="1"/>
-                            <field name="currency_id" readonly="1"/>
-                        </group>
+                        <!-- State field -->
+                        <field name="state" widget="statusbar"
+                               statusbar_visible="opening_control,opened,closing_control,closed"/>
+                    </header>
 
-                        <group string="Timing">
-                            <field name="start_at" readonly="1"/>
-                            <field name="stop_at" readonly="1"/>
-                            <field name="duration" readonly="1" widget="float_time"/>
-                            <field name="last_activity" readonly="1"/>
-                        </group>
-                    </group>
-
-                    <group>
-                        <group string="Statistiche Documenti">
-                            <field name="order_count" readonly="1"/>
-                            <field name="picking_count" readonly="1"/>
-                            <field name="ddt_count" readonly="1"/>
-                            <field name="total_amount" readonly="1" widget="monetary"/>
-                        </group>
-
-                        <group string="Stato Sincronizzazione">
-                            <field name="pending_sync_count" readonly="1"/>
-                            <field name="synced_count" readonly="1"/>
-                            <field name="failed_sync_count" readonly="1"/>
-                            <field name="last_sync_date" readonly="1"/>
-                        </group>
-                    </group>
-
-                    <notebook>
-                        <page string="Ordini" name="orders">
-                            <field name="order_ids" nolabel="1">
-                                <tree string="Ordini Sessione" create="false" editable="false">
-                                    <field name="name"/>
-                                    <field name="partner_id"/>
-                                    <field name="date_order"/>
-                                    <field name="amount_total"/>
-                                    <field name="state"/>
-                                    <field name="sync_status"/>
-                                    <button name="action_view_order" type="object" icon="fa-external-link" title="Apri Ordine"/>
-                                    <button name="action_print_receipt" type="object" icon="fa-print" title="Stampa Ricevuta"/>
-                                </tree>
-                            </field>
-                        </page>
-
-                        <page string="Picking" name="pickings">
-                            <field name="picking_ids" nolabel="1">
-                                <tree string="Picking Sessione" create="false" editable="false">
-                                    <field name="name"/>
-                                    <field name="partner_id"/>
-                                    <field name="scheduled_date"/>
-                                    <field name="state"/>
-                                    <field name="sync_status"/>
-                                    <button name="action_view_picking" type="object" icon="fa-external-link" title="Apri Picking"/>
-                                </tree>
-                            </field>
-                        </page>
-
-                        <page string="DDT" name="ddts">
-                            <field name="ddt_ids" nolabel="1">
-                                <tree string="DDT Sessione" create="false" editable="false">
-                                    <field name="name"/>
-                                    <field name="partner_id"/>
-                                    <field name="date"/>
-                                    <field name="state"/>
-                                    <field name="sync_status"/>
-                                    <button name="action_view_ddt" type="object" icon="fa-external-link" title="Apri DDT"/>
-                                </tree>
-                            </field>
-                        </page>
-
-                        <page string="Sincronizzazione" name="sync">
-                            <group>
-                                <group string="Controllo Sincronizzazione">
-                                    <button name="action_sync_all" type="object" string="Sincronizza Tutto"
-                                            class="btn-primary" attrs="{'invisible': [('pending_sync_count', '=', 0)]}"/>
-                                    <button name="action_check_sync_status" type="object" string="Verifica Stato"
-                                            class="btn-secondary"/>
-                                    <button name="action_force_sync" type="object" string="Forza Sincronizzazione"
-                                            class="btn-warning"/>
-                                </group>
-
-                                <group string="Log Sincronizzazione">
-                                    <field name="sync_log" widget="text" readonly="1"/>
-                                </group>
-                            </group>
-                        </page>
-
-                        <page string="Configurazione" name="config">
-                            <group>
-                                <group string="Impostazioni Sessione">
-                                    <field name="auto_close_after_hours"/>
-                                    <field name="require_confirmation"/>
-                                    <field name="allow_offline_mode"/>
-                                </group>
-
-                                <group string="Metadata">
-                                    <field name="create_date" readonly="1"/>
-                                    <field name="write_date" readonly="1"/>
-                                    <field name="create_uid" readonly="1"/>
-                                    <field name="write_uid" readonly="1"/>
-                                </group>
-                            </group>
-                        </page>
-                    </notebook>
-                </sheet>
-            </form>
-        </field>
-    </record>
-
-    <!-- ================================= -->
-    <!-- VISTA TREE SESSIONI               -->
-    <!-- ================================= -->
-
-    <record id="view_raccolta_session_tree" model="ir.ui.view">
-        <field name="name">raccolta.session.tree</field>
-        <field name="model">raccolta.session</field>
-        <field name="arch" type="xml">
-            <tree string="Sessioni Raccolta Ordini" decoration-success="state=='opened'"
-                  decoration-muted="state=='closed'" decoration-warning="state=='rescue'">
-                <field name="name"/>
-                <field name="user_id"/>
-                <field name="config_id"/>
-                <field name="start_at"/>
-                <field name="stop_at"/>
-                <field name="duration" widget="float_time"/>
-                <field name="order_count"/>
-                <field name="total_amount" widget="monetary"/>
-                <field name="pending_sync_count"/>
-                <field name="state"/>
-                <button name="action_open" type="object" icon="fa-play" title="Apri Sessione"
-                        attrs="{'invisible': [('state', '!=', 'closed')]}"/>
-                <button name="action_close" type="object" icon="fa-stop" title="Chiudi Sessione"
-                        attrs="{'invisible': [('state', '!=', 'opened')]}"/>
-                <button name="action_view_orders" type="object" icon="fa-shopping-cart" title="Vedi Ordini"/>
-            </tree>
-        </field>
-    </record>
-
-    <!-- ================================= -->
-    <!-- VISTA KANBAN SESSIONI             -->
-    <!-- ================================= -->
-
-    <record id="view_raccolta_session_kanban" model="ir.ui.view">
-        <field name="name">raccolta.session.kanban</field>
-        <field name="model">raccolta.session</field>
-        <field name="arch" type="xml">
-            <kanban default_group_by="state" class="o_kanban_small_column">
-                <field name="state"/>
-                <field name="name"/>
-                <field name="user_id"/>
-                <field name="start_at"/>
-                <field name="order_count"/>
-                <field name="total_amount"/>
-                <field name="pending_sync_count"/>
-                <field name="currency_id"/>
-
-                <templates>
-                    <t t-name="kanban-box">
-                        <div class="oe_kanban_card oe_kanban_global_click">
-                            <div class="o_kanban_card_header">
-                                <div class="o_kanban_card_header_title">
-                                    <div class="o_primary">
-                                        <field name="name"/>
-                                    </div>
-                                    <div class="text-muted">
-                                        <field name="user_id"/>
-                                    </div>
-                                </div>
-
-                                <div class="o_kanban_card_manage_pane dropdown">
-                                    <t t-if="record.state.raw_value == 'opened'">
-                                        <span class="badge badge-success">Aperta</span>
-                                    </t>
-                                    <t t-if="record.state.raw_value == 'closed'">
-                                        <span class="badge badge-secondary">Chiusa</span>
-                                    </t>
-                                    <t t-if="record.state.raw_value == 'rescue'">
-                                        <span class="badge badge-warning">Recupero</span>
-                                    </t>
-                                </div>
-                            </div>
-
-                            <div class="o_kanban_card_content">
-                                <div class="o_kanban_primary_left">
-                                    <div class="text-primary">
-                                        <field name="total_amount" widget="monetary"/>
-                                    </div>
-                                    <div class="text-muted">
-                                        <field name="order_count"/> ordini
-                                    </div>
-                                </div>
-
-                                <div class="o_kanban_primary_right">
-                                    <div class="text-muted">
-                                        <field name="start_at" widget="datetime"/>
-                                    </div>
-                                    <t t-if="record.pending_sync_count.raw_value > 0">
-                                        <div class="text-warning">
-                                            <i class="fa fa-warning"/> <field name="pending_sync_count"/> da sync
-                                        </div>
-                                    </t>
-                                </div>
-                            </div>
-
-                            <div class="o_kanban_card_manage_pane">
-                                <div class="o_kanban_card_manage_section o_kanban_manage_reports">
-                                    <div>
-                                        <a type="object" name="action_view_orders" title="Vedi Ordini">
-                                            <i class="fa fa-shopping-cart"/> Ordini
-                                        </a>
-                                    </div>
-                                    <div t-if="record.state.raw_value == 'opened'">
-                                        <a type="object" name="action_close" title="Chiudi Sessione">
-                                            <i class="fa fa-stop"/> Chiudi
-                                        </a>
-                                    </div>
-                                    <div t-if="record.pending_sync_count.raw_value > 0">
-                                        <a type="object" name="action_sync_all" title="Sincronizza">
-                                            <i class="fa fa-refresh"/> Sync
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <!-- Smart buttons -->
+                            <button name="action_view_orders" type="object"
+                                    class="oe_stat_button" icon="fa-shopping-cart">
+                                <field name="order_count" widget="statinfo" string="Ordini"/>
+                            </button>
                         </div>
-                    </t>
-                </templates>
-            </kanban>
-        </field>
-    </record>
 
-    <!-- ================================= -->
-    <!-- VISTA SEARCH SESSIONI             -->
-    <!-- ================================= -->
+                        <!-- Titolo -->
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" placeholder="Nome sessione..."/>
+                            </h1>
+                        </div>
 
-    <record id="view_raccolta_session_search" model="ir.ui.view">
-        <field name="name">raccolta.session.search</field>
-        <field name="model">raccolta.session</field>
-        <field name="arch" type="xml">
-            <search string="Cerca Sessioni">
-                <field name="name" string="Nome Sessione"/>
-                <field name="user_id" string="Utente"/>
-                <field name="config_id" string="Configurazione"/>
+                        <group>
+                            <group string="Informazioni Base">
+                                <field name="config_id"/>
+                                <field name="user_id"/>
+                                <field name="company_id" groups="base.group_multi_company"/>
+                            </group>
 
-                <filter string="Sessioni Aperte" name="opened" domain="[('state', '=', 'opened')]"/>
-                <filter string="Sessioni Chiuse" name="closed" domain="[('state', '=', 'closed')]"/>
-                <filter string="Sessioni in Recupero" name="rescue" domain="[('state', '=', 'rescue')]"/>
+                            <group string="Tempistiche">
+                                <field name="start_at"/>
+                                <field name="stop_at"/>
+                                <field name="duration" widget="float_time"/>
+                            </group>
+                        </group>
 
-                <separator/>
+                        <notebook>
+                            <!-- Tab Ordini -->
+                            <page string="Ordini" name="orders">
+                                <field name="order_ids">
+                                    <tree string="Ordini Sessione" create="false" edit="false">
+                                        <field name="name"/>
+                                        <field name="partner_id"/>
+                                        <field name="date_order"/>
+                                        <field name="state"/>
+                                        <field name="amount_total" sum="Totale"/>
 
-                <filter string="Con Documenti da Sincronizzare" name="pending_sync"
-                        domain="[('pending_sync_count', '>', 0)]"/>
-                <filter string="Completamente Sincronizzate" name="fully_synced"
-                        domain="[('pending_sync_count', '=', 0), ('order_count', '>', 0)]"/>
+                                        <!-- Azioni inline -->
+                                        <button name="action_view_order" type="object"
+                                                icon="fa-external-link" title="Apri Ordine"/>
+                                    </tree>
+                                </field>
+                            </page>
 
-                <separator/>
+                            <!-- Tab Statistiche -->
+                            <page string="Statistiche" name="stats">
+                                <group>
+                                    <group string="Conteggi">
+                                        <field name="order_count" readonly="1"/>
+                                    </group>
 
-                <filter string="Mie Sessioni" name="my_sessions" domain="[('user_id', '=', uid)]"/>
-                <filter string="Oggi" name="today" domain="[('start_at', '>=', datetime.datetime.combine(context_today(), datetime.time(0,0,0)))]"/>
-                <filter string="Questa Settimana" name="this_week" domain="[('start_at', '>=', (context_today() - datetime.timedelta(days=context_today().weekday())).strftime('%Y-%m-%d'))]"/>
+                                    <group string="Tempi">
+                                        <field name="duration" widget="float_time" readonly="1"/>
+                                    </group>
+                                </group>
+                            </page>
 
-                <group expand="0" string="Raggruppa per">
-                    <filter string="Utente" name="group_user" context="{'group_by': 'user_id'}"/>
-                    <filter string="Configurazione" name="group_config" context="{'group_by': 'config_id'}"/>
-                    <filter string="Stato" name="group_state" context="{'group_by': 'state'}"/>
-                    <filter string="Data Inizio" name="group_start_date" context="{'group_by': 'start_at:day'}"/>
-                </group>
-            </search>
-        </field>
-    </record>
+                            <!-- Tab Note -->
+                            <page string="Note" name="notes">
+                                <group>
+                                    <field name="notes" nolabel="1" placeholder="Note sulla sessione..."/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
 
-    <!-- ================================= -->
-    <!-- AZIONI SESSIONI                   -->
-    <!-- ================================= -->
+                    <!-- Chatter -->
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids" widget="mail_followers"/>
+                        <field name="activity_ids" widget="mail_activity"/>
+                        <field name="message_ids" widget="mail_thread"/>
+                    </div>
+                </form>
+            </field>
+        </record>
 
-    <record id="action_raccolta_session" model="ir.actions.act_window">
-        <field name="name">Sessioni Raccolta Ordini</field>
-        <field name="res_model">raccolta.session</field>
-        <field name="view_mode">kanban,tree,form</field>
-        <field name="context">{'search_default_my_sessions': 1}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">
-                Crea la prima sessione di raccolta ordini!
-            </p>
-            <p>
-                Le sessioni ti permettono di organizzare il lavoro di raccolta ordini offline.
-                Ogni agente può avere una sessione attiva per raccogliere ordini, generare picking e DDT.
-            </p>
-        </field>
-    </record>
+        <!-- ================================= -->
+        <!-- SESSIONE RACCOLTA: TREE           -->
+        <!-- ================================= -->
 
-    <record id="action_my_current_session" model="ir.actions.act_window">
-        <field name="name">La Mia Sessione Attuale</field>
-        <field name="res_model">raccolta.session</field>
-        <field name="view_mode">form</field>
-        <field name="domain">[('user_id', '=', uid), ('state', '=', 'opened')]</field>
-        <field name="context">{'form_view_initial_mode': 'edit'}</field>
-        <field name="target">current</field>
-    </record>
+        <record id="view_raccolta_session_tree" model="ir.ui.view">
+            <field name="name">raccolta.session.tree</field>
+            <field name="model">raccolta.session</field>
+            <field name="arch" type="xml">
+                <tree string="Sessioni Raccolta" decoration-info="state=='opened'"
+                      decoration-muted="state=='closed'">
+                    <field name="name"/>
+                    <field name="user_id"/>
+                    <field name="start_at"/>
+                    <field name="stop_at"/>
+                    <field name="duration" widget="float_time"/>
+                    <field name="order_count"/>
+                    <field name="state" widget="badge"
+                           decoration-info="state=='opened'"
+                           decoration-success="state=='closed'"
+                           decoration-warning="state in ['opening_control','closing_control']"/>
 
-    <record id="action_sessions_pending_sync" model="ir.actions.act_window">
-        <field name="name">Sessioni con Documenti da Sincronizzare</field>
-        <field name="res_model">raccolta.session</field>
-        <field name="view_mode">tree,form</field>
-        <field name="domain">[('pending_sync_count', '>', 0)]</field>
-        <field name="context">{'search_default_pending_sync': 1}</field>
-    </record>
+                    <!-- Azioni inline -->
+                    <button name="action_open" type="object"
+                            icon="fa-play" title="Apri Sessione"
+                            attrs="{'invisible': [('state', '!=', 'opening_control')]}"/>
 
+                    <button name="action_close" type="object"
+                            icon="fa-stop" title="Chiudi Sessione"
+                            attrs="{'invisible': [('state', '!=', 'opened')]}"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- ================================= -->
+        <!-- SESSIONE RACCOLTA: KANBAN         -->
+        <!-- ================================= -->
+
+        <record id="view_raccolta_session_kanban" model="ir.ui.view">
+            <field name="name">raccolta.session.kanban</field>
+            <field name="model">raccolta.session</field>
+            <field name="arch" type="xml">
+                <kanban class="o_kanban_mobile" default_group_by="state">
+                    <field name="name"/>
+                    <field name="user_id"/>
+                    <field name="start_at"/>
+                    <field name="duration"/>
+                    <field name="order_count"/>
+                    <field name="state"/>
+
+                    <templates>
+                        <t t-name="kanban-box">
+                            <div class="oe_kanban_card oe_kanban_global_click">
+                                <div class="oe_kanban_content">
+                                    <!-- Header -->
+                                    <div class="oe_kanban_card_header">
+                                        <div class="oe_kanban_card_header_title">
+                                            <div class="o_kanban_record_title">
+                                                <field name="name"/>
+                                            </div>
+                                            <div class="o_kanban_record_subtitle">
+                                                <field name="user_id"/> •
+                                                <field name="start_at" widget="date"/>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Body -->
+                                    <div class="oe_kanban_card_content">
+                                        <div class="o_kanban_record_bottom">
+                                            <div class="oe_kanban_bottom_left">
+                                                <span class="badge badge-pill badge-info">
+                                                    <field name="order_count"/> Ordini
+                                                </span>
+
+                                                <span class="badge badge-pill badge-secondary"
+                                                      t-if="record.duration.raw_value">
+                                                    <field name="duration" widget="float_time"/>
+                                                </span>
+                                            </div>
+
+                                            <div class="oe_kanban_bottom_right">
+                                                <button name="action_open" type="object"
+                                                        class="btn btn-primary btn-sm"
+                                                        t-if="record.state.raw_value == 'opening_control'">
+                                                    <i class="fa fa-play"/> Apri
+                                                </button>
+
+                                                <button name="action_close" type="object"
+                                                        class="btn btn-secondary btn-sm"
+                                                        t-if="record.state.raw_value == 'opened'">
+                                                    <i class="fa fa-stop"/> Chiudi
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
+        <!-- ================================= -->
+        <!-- SESSIONE RACCOLTA: SEARCH         -->
+        <!-- ================================= -->
+
+        <record id="view_raccolta_session_search" model="ir.ui.view">
+            <field name="name">raccolta.session.search</field>
+            <field name="model">raccolta.session</field>
+            <field name="arch" type="xml">
+                <search string="Cerca Sessioni">
+                    <!-- Campi ricerca -->
+                    <field name="name" string="Nome"
+                           filter_domain="[('name','ilike',self)]"/>
+                    <field name="user_id" string="Agente"/>
+                    <field name="config_id" string="Configurazione"/>
+
+                    <!-- Separatore -->
+                    <separator/>
+
+                    <!-- Filtri predefiniti -->
+                    <filter string="Aperte" name="opened"
+                            domain="[('state','=','opened')]"
+                            help="Sessioni aperte"/>
+
+                    <filter string="Chiuse" name="closed"
+                            domain="[('state','=','closed')]"
+                            help="Sessioni chiuse"/>
+
+                    <filter string="Oggi" name="today"
+                            domain="[('start_at','&gt;=',datetime.datetime.combine(context_today(),datetime.time(0,0,0))),
+                                     ('start_at','&lt;',datetime.datetime.combine(context_today()+datetime.timedelta(days=1),datetime.time(0,0,0)))]"
+                            help="Sessioni di oggi"/>
+
+                    <filter string="Questa Settimana" name="this_week"
+                            domain="[('start_at','&gt;=', (context_today()-datetime.timedelta(days=context_today().weekday())).strftime('%Y-%m-%d')),
+                                     ('start_at','&lt;', (context_today()+datetime.timedelta(days=7-context_today().weekday())).strftime('%Y-%m-%d'))]"
+                            help="Sessioni di questa settimana"/>
+
+                    <!-- Raggruppamenti -->
+                    <group expand="0" string="Raggruppa per">
+                        <filter string="Agente" name="group_by_user"
+                                context="{'group_by':'user_id'}"/>
+                        <filter string="Stato" name="group_by_state"
+                                context="{'group_by':'state'}"/>
+                        <filter string="Data" name="group_by_date"
+                                context="{'group_by':'start_at:day'}"/>
+                        <filter string="Configurazione" name="group_by_config"
+                                context="{'group_by':'config_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- ================================= -->
+        <!-- AZIONI SESSIONE                   -->
+        <!-- ================================= -->
+
+        <record id="action_raccolta_session" model="ir.actions.act_window">
+            <field name="name">Sessioni Raccolta</field>
+            <field name="res_model">raccolta.session</field>
+            <field name="view_mode">kanban,tree,form</field>
+            <field name="view_id" ref="view_raccolta_session_kanban"/>
+            <field name="search_view_id" ref="view_raccolta_session_search"/>
+            <field name="context">{
+                'search_default_today': 1
+            }</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Nessuna sessione di raccolta trovata!
+                </p>
+                <p>
+                    Le sessioni vengono create automaticamente quando un agente
+                    inizia la raccolta ordini tramite l'applicazione mobile.
+                </p>
+            </field>
+        </record>
+
+    </data>
 </odoo>

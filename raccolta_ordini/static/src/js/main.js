@@ -1,214 +1,583 @@
-<?php
 /**
- * Template Contenuto Condiviso BASE per ricevute standard
- * Versione semplificata senza DDT (per preventivi normali)
- *
- * Variabili disponibili:
- * - $quote: dati preventivo/ordine
- * - $client: dati cliente
- * - $companyData: dati azienda
- * - $options: opzioni formato
+ * RACCOLTA ORDINI - MAIN APPLICATION
+ * Entry point per l'applicazione web raccolta ordini
  */
 
-// Prepara dati base
-$orderName = $quote['name'] ?: 'PREV-' . ($quote['local_id'] ?? 'TEMP');
-$products = is_string($quote['products']) ? json_decode($quote['products'], true) : ($quote['products'] ?? []);
+(function() {
+    'use strict';
 
-// Processa note prodotto
-foreach ($products as &$product) {
-    if (!isset($product['note'])) {
-        $product['note'] = '';
+    // Namespace globale
+    window.RaccoltaApp = window.RaccoltaApp || {};
+
+    /**
+     * Configurazione base applicazione
+     */
+    const CONFIG = {
+        API_BASE: '/raccolta/api',
+        VERSION: '1.0.0',
+        DEBUG: false,
+        STORAGE_PREFIX: 'raccolta_',
+        SYNC_INTERVAL: 30000, // 30 secondi
+        OFFLINE_TIMEOUT: 5000, // 5 secondi
+    };
+
+    /**
+     * Classe principale applicazione
+     */
+    class RaccoltaApplication {
+        constructor() {
+            this.models = new Map();
+            this.screens = new Map();
+            this.currentUser = null;
+            this.currentConfig = null;
+            this.currentSession = null;
+            this.isOnline = navigator.onLine;
+            this.syncQueue = [];
+            
+            // Bind eventi
+            this.bindEvents();
+            
+            console.log('Raccolta App inizializzata', CONFIG.VERSION);
+        }
+
+        /**
+         * Inizializza l'applicazione
+         */
+        async init() {
+            try {
+                // Mostra loading
+                this.showLoading('Inizializzazione applicazione...');
+
+                // Verifica supporto browser
+                if (!this.checkBrowserSupport()) {
+                    throw new Error('Browser non supportato');
+                }
+
+                // Inizializza storage offline
+                await this.initOfflineStorage();
+
+                // Verifica autenticazione
+                await this.checkAuthentication();
+
+                // Carica configurazione
+                await this.loadConfiguration();
+
+                // Inizializza UI
+                this.initUI();
+
+                // Avvia sincronizzazione
+                this.startSyncManager();
+
+                console.log('Raccolta App pronta');
+                this.hideLoading();
+
+            } catch (error) {
+                console.error('Errore inizializzazione:', error);
+                this.showError('Errore durante l\'inizializzazione: ' + error.message);
+            }
+        }
+
+        /**
+         * Verifica supporto browser
+         */
+        checkBrowserSupport() {
+            const required = [
+                'localStorage',
+                'indexedDB',
+                'fetch',
+                'Promise',
+                'addEventListener'
+            ];
+
+            for (const feature of required) {
+                if (!(feature in window)) {
+                    console.error(`Feature non supportata: ${feature}`);
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /**
+         * Inizializza storage offline
+         */
+        async initOfflineStorage() {
+            try {
+                if (!this.models.has('storage')) {
+                    // Se il modello storage non è caricato, usiamo localStorage base
+                    this.storage = {
+                        get: (key) => {
+                            try {
+                                const data = localStorage.getItem(CONFIG.STORAGE_PREFIX + key);
+                                return data ? JSON.parse(data) : null;
+                            } catch (e) {
+                                console.warn('Errore lettura storage:', e);
+                                return null;
+                            }
+                        },
+                        set: (key, value) => {
+                            try {
+                                localStorage.setItem(CONFIG.STORAGE_PREFIX + key, JSON.stringify(value));
+                                return true;
+                            } catch (e) {
+                                console.warn('Errore scrittura storage:', e);
+                                return false;
+                            }
+                        },
+                        remove: (key) => {
+                            localStorage.removeItem(CONFIG.STORAGE_PREFIX + key);
+                        }
+                    };
+                }
+            } catch (error) {
+                console.warn('Storage offline non disponibile, uso memoria');
+                this.storage = new Map();
+            }
+        }
+
+        /**
+         * Verifica autenticazione utente
+         */
+        async checkAuthentication() {
+            try {
+                const response = await this.apiCall('/health');
+                if (response.success && response.user_id) {
+                    this.currentUser = {
+                        id: response.user_id,
+                        is_agent: response.is_agent
+                    };
+
+                    if (!response.is_agent) {
+                        throw new Error('Utente non autorizzato come agente raccolta');
+                    }
+                } else {
+                    throw new Error('Utente non autenticato');
+                }
+            } catch (error) {
+                console.error('Errore autenticazione:', error);
+                window.location.href = '/web/login';
+            }
+        }
+
+        /**
+         * Carica configurazione utente
+         */
+        async loadConfiguration() {
+            try {
+                const response = await this.apiCall('/config');
+                if (response.success) {
+                    this.currentConfig = response.config;
+                    this.storage.set('config', this.currentConfig);
+                } else {
+                    // Prova a caricare da storage offline
+                    this.currentConfig = this.storage.get('config');
+                    if (!this.currentConfig) {
+                        throw new Error('Configurazione non trovata');
+                    }
+                }
+            } catch (error) {
+                console.error('Errore caricamento configurazione:', error);
+                throw error;
+            }
+        }
+
+        /**
+         * Inizializza interfaccia utente
+         */
+        initUI() {
+            // Nasconde loading screen se presente
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) {
+                loadingScreen.style.display = 'none';
+            }
+
+            // Mostra interfaccia principale
+            const appContainer = document.getElementById('app-container');
+            if (appContainer) {
+                appContainer.style.display = 'block';
+            }
+
+            // Inizializza navigazione mobile se presente
+            this.initMobileNavigation();
+
+            // Inizializza status network
+            this.initNetworkStatus();
+        }
+
+        /**
+         * Inizializza navigazione mobile
+         */
+        initMobileNavigation() {
+            const mobileNav = document.querySelector('.mobile-nav');
+            if (!mobileNav) return;
+
+            const navItems = mobileNav.querySelectorAll('.mobile-nav-item');
+            navItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    
+                    // Rimuovi active da tutti
+                    navItems.forEach(nav => nav.classList.remove('active'));
+                    
+                    // Aggiungi active al corrente
+                    item.classList.add('active');
+                    
+                    // Naviga alla schermata
+                    const target = item.dataset.screen;
+                    if (target) {
+                        this.navigateToScreen(target);
+                    }
+                });
+            });
+        }
+
+        /**
+         * Inizializza status network
+         */
+        initNetworkStatus() {
+            const statusEl = document.querySelector('.network-status');
+            
+            const updateStatus = () => {
+                if (!statusEl) return;
+                
+                if (this.isOnline) {
+                    statusEl.className = 'network-status online';
+                    statusEl.textContent = 'Connesso';
+                    setTimeout(() => {
+                        statusEl.classList.remove('online');
+                    }, 3000);
+                } else {
+                    statusEl.className = 'network-status offline';
+                    statusEl.textContent = 'Modalità Offline';
+                }
+            };
+
+            updateStatus();
+        }
+
+        /**
+         * Avvia gestore sincronizzazione
+         */
+        startSyncManager() {
+            // Sincronizzazione periodica
+            setInterval(() => {
+                if (this.isOnline && this.syncQueue.length > 0) {
+                    this.processSyncQueue();
+                }
+            }, CONFIG.SYNC_INTERVAL);
+
+            // Sincronizzazione quando torna online
+            window.addEventListener('online', () => {
+                this.isOnline = true;
+                this.processSyncQueue();
+                this.initNetworkStatus();
+            });
+        }
+
+        /**
+         * Processa coda sincronizzazione
+         */
+        async processSyncQueue() {
+            if (this.syncQueue.length === 0) return;
+
+            console.log(`Processando ${this.syncQueue.length} elementi in coda sync`);
+
+            const toProcess = [...this.syncQueue];
+            this.syncQueue = [];
+
+            for (const item of toProcess) {
+                try {
+                    await this.syncItem(item);
+                } catch (error) {
+                    console.error('Errore sync item:', error);
+                    // Rimetti in coda se fallisce
+                    this.syncQueue.push(item);
+                }
+            }
+        }
+
+        /**
+         * Sincronizza singolo elemento
+         */
+        async syncItem(item) {
+            switch (item.type) {
+                case 'order':
+                    return await this.syncOrder(item.data);
+                case 'session':
+                    return await this.syncSession(item.data);
+                default:
+                    console.warn('Tipo sync non supportato:', item.type);
+            }
+        }
+
+        /**
+         * Naviga a schermata
+         */
+        navigateToScreen(screenName) {
+            // Nasconde tutte le schermate
+            const screens = document.querySelectorAll('.screen');
+            screens.forEach(screen => {
+                screen.style.display = 'none';
+            });
+
+            // Mostra schermata richiesta
+            const targetScreen = document.getElementById(`screen-${screenName}`);
+            if (targetScreen) {
+                targetScreen.style.display = 'block';
+                
+                // Aggiorna titolo se presente
+                const title = targetScreen.dataset.title;
+                if (title) {
+                    document.title = `${title} - Raccolta Ordini`;
+                }
+            }
+        }
+
+        /**
+         * Bind eventi globali
+         */
+        bindEvents() {
+            // Gestione connettività
+            window.addEventListener('online', () => {
+                this.isOnline = true;
+                console.log('Connessione ripristinata');
+            });
+
+            window.addEventListener('offline', () => {
+                this.isOnline = false;
+                console.log('Connessione persa');
+            });
+
+            // Gestione errori globali
+            window.addEventListener('error', (e) => {
+                console.error('Errore globale:', e.error);
+            });
+
+            // Gestione Promise rejection
+            window.addEventListener('unhandledrejection', (e) => {
+                console.error('Promise rejection:', e.reason);
+            });
+
+            // Gestione back button
+            window.addEventListener('popstate', (e) => {
+                if (e.state && e.state.screen) {
+                    this.navigateToScreen(e.state.screen);
+                }
+            });
+        }
+
+        /**
+         * Chiamata API con gestione offline
+         */
+        async apiCall(endpoint, options = {}) {
+            const url = CONFIG.API_BASE + endpoint;
+            const defaultOptions = {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin'
+            };
+
+            const finalOptions = { ...defaultOptions, ...options };
+
+            // Se offline e non è una GET, aggiungi alla coda sync
+            if (!this.isOnline && finalOptions.method !== 'GET') {
+                const syncItem = {
+                    type: 'api_call',
+                    endpoint,
+                    options: finalOptions,
+                    timestamp: Date.now()
+                };
+                this.syncQueue.push(syncItem);
+                return { success: false, offline: true };
+            }
+
+            try {
+                const response = await fetch(url, finalOptions);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                return data;
+
+            } catch (error) {
+                console.error('Errore API call:', error);
+                
+                // Se non online, prova da storage
+                if (!this.isOnline) {
+                    const cachedData = this.storage.get(`api_cache_${endpoint}`);
+                    if (cachedData) {
+                        return cachedData;
+                    }
+                }
+
+                throw error;
+            }
+        }
+
+        /**
+         * Registra modello
+         */
+        registerModel(name, model) {
+            this.models.set(name, model);
+            console.log(`Modello registrato: ${name}`);
+        }
+
+        /**
+         * Ottieni modello
+         */
+        getModel(name) {
+            return this.models.get(name);
+        }
+
+        /**
+         * Registra schermata
+         */
+        registerScreen(name, screen) {
+            this.screens.set(name, screen);
+            console.log(`Schermata registrata: ${name}`);
+        }
+
+        /**
+         * Mostra loading
+         */
+        showLoading(message = 'Caricamento...') {
+            let loadingEl = document.getElementById('global-loading');
+            
+            if (!loadingEl) {
+                loadingEl = document.createElement('div');
+                loadingEl.id = 'global-loading';
+                loadingEl.className = 'raccolta-loading';
+                loadingEl.innerHTML = `
+                    <div class="raccolta-spinner"></div>
+                    <div id="loading-message">${message}</div>
+                `;
+                document.body.appendChild(loadingEl);
+            } else {
+                document.getElementById('loading-message').textContent = message;
+                loadingEl.style.display = 'flex';
+            }
+        }
+
+        /**
+         * Nasconde loading
+         */
+        hideLoading() {
+            const loadingEl = document.getElementById('global-loading');
+            if (loadingEl) {
+                loadingEl.style.display = 'none';
+            }
+        }
+
+        /**
+         * Mostra errore
+         */
+        showError(message, title = 'Errore') {
+            this.hideLoading();
+            
+            // Usa native alert come fallback
+            alert(`${title}: ${message}`);
+            
+            // TODO: Implementare modal di errore personalizzato
+        }
+
+        /**
+         * Mostra notifica
+         */
+        showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `raccolta-alert ${type}`;
+            notification.textContent = message;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 9999;
+                min-width: 300px;
+                animation: slideInDown 0.3s ease-out;
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Rimuovi dopo 5 secondi
+            setTimeout(() => {
+                notification.style.animation = 'slideInUp 0.3s ease-out reverse';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 5000);
+        }
     }
 
-    // Formatta prezzo se presente
-    if (isset($product['price_unit'])) {
-        $product['price_formatted'] = '€' . number_format(floatval($product['price_unit']), 2, ',', '.');
-    }
+    /**
+     * Utility functions globali
+     */
+    window.RaccoltaApp.utils = {
+        formatCurrency: (amount, currency = 'EUR') => {
+            return new Intl.NumberFormat('it-IT', {
+                style: 'currency',
+                currency: currency
+            }).format(amount);
+        },
 
-    // Calcola subtotale riga
-    if (isset($product['price_unit']) && isset($product['quantity'])) {
-        $lineTotal = floatval($product['price_unit']) * floatval($product['quantity']);
-        $product['subtotal_formatted'] = '€' . number_format($lineTotal, 2, ',', '.');
-    }
-}
+        formatDate: (date, options = {}) => {
+            const defaultOptions = {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            };
+            return new Intl.DateTimeFormat('it-IT', { ...defaultOptions, ...options }).format(new Date(date));
+        },
 
-// Calcola totali
-$subtotal = 0;
-$taxAmount = 0;
-$total = 0;
+        formatDateTime: (date) => {
+            return new Intl.DateTimeFormat('it-IT', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            }).format(new Date(date));
+        },
 
-foreach ($products as $product) {
-    $price = floatval($product['price_unit'] ?? 0);
-    $qty = floatval($product['quantity'] ?? 1);
-    $lineTotal = $price * $qty;
-    $subtotal += $lineTotal;
-}
+        debounce: (func, wait) => {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        },
 
-// IVA standard 22%
-$taxRate = 0.22;
-$taxAmount = $subtotal * $taxRate;
-$total = $subtotal + $taxAmount;
+        generateId: () => {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+    };
 
-// Determina se mostrare prezzi
-$showPrices = $options['show_prices'] ?? true;
+    /**
+     * Inizializzazione quando DOM pronto
+     */
+    document.addEventListener('DOMContentLoaded', () => {
+        // Crea istanza globale app
+        window.RaccoltaApp.instance = new RaccoltaApplication();
+        
+        // Avvia inizializzazione
+        window.RaccoltaApp.instance.init().catch(error => {
+            console.error('Errore fatale inizializzazione:', error);
+        });
+    });
 
-// Struttura dati BASE per il rendering
-$receiptData = [
-    // HEADER AZIENDA
-    'company' => [
-        'name' => strtoupper($companyData['name'] ?? 'AZIENDA'),
-        'address' => $companyData['street'] ?? '',
-        'street2' => $companyData['street2'] ?? '',
-        'city_line' => trim(($companyData['zip'] ?? '') . ' ' . ($companyData['city'] ?? '')),
-        'state' => $companyData['state'] ?? '',
-        'phone' => $companyData['phone'] ?? '',
-        'email' => $companyData['email'] ?? '',
-        'vat' => $companyData['vat'] ?? '',
-        'website' => $companyData['website'] ?? ''
-    ],
+    // Export per moduli
+    window.RaccoltaApp.Application = RaccoltaApplication;
+    window.RaccoltaApp.CONFIG = CONFIG;
 
-    // DOCUMENTO BASE
-    'document' => [
-        'title' => 'PREVENTIVO',
-        'type' => 'Preventivo di Vendita',
-        'date' => date('d/m/Y', strtotime($quote['date_order'] ?? 'now')),
-        'time' => date('H:i', strtotime($quote['date_order'] ?? 'now')),
-        'valid_until' => date('d/m/Y', strtotime($quote['validity_date'] ?? '+30 days')),
-        'fiscal_year' => date('Y')
-    ],
-
-    // ORDINE
-    'order' => [
-        'name' => $orderName,
-        'id' => $quote['id'] ?? null,
-        'local_id' => $quote['local_id'] ?? null,
-        'state' => $quote['state'] ?? 'draft',
-        'state_label' => [
-            'draft' => 'Bozza',
-            'sent' => 'Inviato',
-            'sale' => 'Confermato',
-            'done' => 'Completato',
-            'cancel' => 'Annullato'
-        ][$quote['state'] ?? 'draft'] ?? 'Sconosciuto',
-        'user_code' => $quote['user_code'] ?? '',
-        'agent_code' => $quote['agent_code'] ?? '',
-        'agent_name' => $quote['agent_name'] ?? ''
-    ],
-
-    // CLIENTE
-    'client' => [
-        'name' => $quote['client_name'] ?? $client['name'] ?? '',
-        'display_name' => $client['display_name'] ?? $client['name'] ?? '',
-        'email' => $client['email'] ?? '',
-        'phone' => $client['phone'] ?? '',
-        'mobile' => $client['mobile'] ?? '',
-        'vat' => $client['vat'] ?? '',
-        'fiscal_code' => $client['fiscal_code'] ?? '',
-
-        // Indirizzo completo
-        'street' => $client['street'] ?? '',
-        'street2' => $client['street2'] ?? '',
-        'city' => $client['city'] ?? '',
-        'zip' => $client['zip'] ?? '',
-        'state' => $client['state'] ?? '',
-        'country_id' => $client['country_id'] ?? 'Italia',
-
-        // Indirizzo formattato
-        'address_line1' => $client['street'] ?? '',
-        'address_line2' => trim(($client['zip'] ?? '') . ' ' . ($client['city'] ?? '') .
-                                ($client['state'] ? ' (' . $client['state'] . ')' : '')),
-
-        // Dati business
-        'is_company' => $client['is_company'] ?? false,
-        'customer_rank' => $client['customer_rank'] ?? 0,
-        'ref' => $client['ref'] ?? '',
-        'website' => $client['website'] ?? ''
-    ],
-
-    // PRODOTTI CON NOTE
-    'products' => $products,
-    'product_count' => count($products),
-    'has_products' => count($products) > 0,
-
-    // NOTE ORDINE
-    'order_notes' => $quote['general_notes'] ?? $quote['notes'] ?? '',
-    'has_order_notes' => !empty($quote['general_notes'] ?? $quote['notes'] ?? ''),
-    'internal_notes' => $quote['internal_notes'] ?? '',
-    'delivery_instructions' => $quote['delivery_instructions'] ?? '',
-
-    // TOTALI
-    'totals' => [
-        'show_prices' => $showPrices,
-        'subtotal' => number_format($subtotal, 2, ',', '.'),
-        'subtotal_raw' => $subtotal,
-        'tax_rate' => $taxRate * 100,
-        'tax_amount' => number_format($taxAmount, 2, ',', '.'),
-        'tax_amount_raw' => $taxAmount,
-        'total' => number_format($total, 2, ',', '.'),
-        'total_raw' => $total,
-        'currency' => '€'
-    ],
-
-    // FIRMA DIGITALE
-    'signature' => [
-        'enabled' => $options['include_signature'] ?? true,
-        'required' => $options['signature_required'] ?? false,
-        'data' => $options['signature_data'] ?? null,
-        'has_signature' => !empty($options['signature_data']),
-        'customer_name' => $client['name'] ?? 'Il Cliente'
-    ],
-
-    // FOOTER
-    'footer' => [
-        'generated_date' => date('d/m/Y H:i'),
-        'operator' => $_SESSION['user']['name'] ?? $_SESSION['user']['username'] ?? 'Sistema',
-        'agent_name' => $_SESSION['user']['name'] ?? '',
-        'agent_code' => $quote['agent_code'] ?? '',
-        'company_name' => $companyData['name'] ?? '',
-        'system' => 'Raccolta Ordini Offline',
-        'system_version' => '1.0.0',
-
-        // Stato sincronizzazione
-        'sync_status' => ($quote['synced'] ?? false) ? 'SINCRONIZZATO' : 'DA SINCRONIZZARE',
-        'sync_detail' => ($quote['synced'] ?? false)
-            ? 'Documento sincronizzato con Odoo'
-            : 'Documento da sincronizzare con Odoo',
-
-        // Disclaimer legale
-        'legal_disclaimer' => 'Documento non fiscale - Non costituisce fattura',
-        'privacy_note' => 'Documento riservato e confidenziale'
-    ],
-
-    // OPZIONI
-    'options' => [
-        'format' => $options['format'] ?? '80mm',
-        'include_signature' => $options['include_signature'] ?? true,
-        'signature_data' => $options['signature_data'] ?? null,
-        'show_prices' => $showPrices,
-        'show_barcode' => $options['show_barcode'] ?? false,
-        'qr_code_data' => $options['qr_code_data'] ?? null,
-
-        // Stile ricevuta
-        'paper_width' => $options['format'] === '48mm' ? '48mm' : '80mm',
-        'font_size' => $options['format'] === '48mm' ? 'small' : 'normal',
-        'line_width' => $options['format'] === '48mm' ? 32 : 48,
-
-        // Debug
-        'debug_mode' => $options['debug'] ?? false,
-        'show_ids' => $options['show_ids'] ?? false
-    ],
-
-    // METADATA
-    'meta' => [
-        'generated_at' => date('c'),
-        'template_version' => '1.0.0',
-        'format' => $options['format'] ?? '80mm',
-        'locale' => 'it_IT',
-        'timezone' => 'Europe/Rome',
-        'encoding' => 'UTF-8'
-    ]
-];
-
-// Return data per uso nei convertitori
-return $receiptData;
-?>
+})();

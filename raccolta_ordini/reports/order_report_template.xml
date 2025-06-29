@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ================================= -->
+        <!-- WIZARD SETUP AGENTE: FORM         -->
+        <!-- ================================= -->
+
+        <record id="view_setup_agent_wizard_form" model="ir.ui.view">
+            <field name="name">raccolta.setup.agent.wizard.form</field>
+            <field name="model">raccolta.setup.agent.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Setup Agente Raccolta Ordini">
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>Configurazione Agente Raccolta Ordini</h1>
+                            <p>Questo wizard configurerà automaticamente un utente come agente raccolta ordini</p>
+                        </div>
+
+                        <group>
+                            <group string="Utente">
+                                <field name="user_id"
+                                       domain="[('is_raccolta_agent', '=', False)]"
+                                       required="1"/>
+                            </group>
+                        </group>
+
+                        <notebook>
+                            <!-- Tab Configurazione Base -->
+                            <page string="Configurazione Base" name="base_config">
+                                <group>
+                                    <group string="Codice Agente">
+                                        <field name="agent_code" required="1"/>
+                                    </group>
+
+                                    <group string="Azienda">
+                                        <field name="company_id"
+                                               groups="base.group_multi_company"/>
+                                    </group>
+                                </group>
+                            </page>
+
+                            <!-- Tab Numerazione -->
+                            <page string="Numerazione" name="numbering">
+                                <group>
+                                    <group string="Configurazione Sequenze">
+                                        <field name="create_sequences"/>
+                                        <field name="order_prefix"
+                                               attrs="{'required': [('create_sequences', '=', True)]}"/>
+                                        <field name="order_start_number"
+                                               attrs="{'required': [('create_sequences', '=', True)]}"/>
+                                    </group>
+
+                                    <group string="DDT">
+                                        <field name="ddt_prefix"
+                                               attrs="{'required': [('create_sequences', '=', True)]}"/>
+                                        <field name="ddt_start_number"
+                                               attrs="{'required': [('create_sequences', '=', True)]}"/>
+                                    </group>
+                                </group>
+                            </page>
+
+                            <!-- Tab Stampa -->
+                            <page string="Stampa" name="printing">
+                                <group>
+                                    <group string="Configurazione Stampante">
+                                        <field name="setup_printer"/>
+                                        <field name="printer_name"
+                                               attrs="{'required': [('setup_printer', '=', True)]}"/>
+                                        <field name="receipt_width"/>
+                                    </group>
+                                </group>
+                            </page>
+
+                            <!-- Tab DDT -->
+                            <page string="DDT" name="ddt_setup">
+                                <group>
+                                    <group string="Configurazione DDT">
+                                        <field name="setup_ddt"/>
+                                        <field name="transport_method_id"
+                                               attrs="{'required': [('setup_ddt', '=', True)]}"/>
+                                        <field name="transport_condition_id"
+                                               attrs="{'required': [('setup_ddt', '=', True)]}"/>
+                                    </group>
+                                </group>
+                            </page>
+
+                            <!-- Tab Risultati -->
+                            <page string="Risultati" name="results"
+                                  attrs="{'invisible': [('setup_log', '=', False)]}">
+                                <group>
+                                    <field name="setup_log" nolabel="1" widget="text" readonly="1"/>
+                                </group>
+                            </page>
+                        </notebook>
+
+                    </sheet>
+
+                    <footer>
+                        <button string="Configura Agente" name="action_setup_agent"
+                                type="object" class="btn-primary"
+                                attrs="{'invisible': [('setup_log', '!=', False)]}"/>
+
+                        <button string="Fatto" special="cancel" class="btn-success"
+                                attrs="{'invisible': [('setup_log', '=', False)]}"/>
+
+                        <button string="Annulla" special="cancel" class="btn-secondary"
+                                attrs="{'invisible': [('setup_log', '!=', False)]}"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- ================================= -->
+        <!-- AZIONE WIZARD SETUP AGENTE        -->
+        <!-- ================================= -->
+
+        <record id="action_setup_agent_wizard" model="ir.actions.act_window">
+            <field name="name">Setup Agente Raccolta</field>
+            <field name="res_model">raccolta.setup.agent.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="context">{}</field>
+        </record>
+
+    </data>
+</odoo>
