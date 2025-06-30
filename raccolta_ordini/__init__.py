@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from . import models
-from . import controllers
-from . import wizards
-from . import reports
+from . import controllers  # ✅ RIATTIVATO: necessario per API offline!
+from . import wizards      # ✅ RIATTIVATO: mass_sync_wizard necessario
+from . import reports      # ✅ RIATTIVATO: ricevute termiche necessarie
 
 
 def post_init_hook(cr, registry):
@@ -66,18 +66,37 @@ def _setup_existing_agents(env):
 
 def _ensure_ddt_types(env):
 	"""Assicura che esistano i tipi DDT necessari"""
-	ddt_type_model = env['stock.delivery.note.type']
-
-	# Tipo DDT per vendite
-	if not ddt_type_model.search([('code', '=', 'outgoing'), ('name', 'ilike', 'Raccolta')]):
-		ddt_type_model.create({
-			'name': 'DDT Raccolta Ordini - Vendita',
-			'code': 'outgoing',
-			'sequence_id': env.ref('stock.sequence_stock_delivery_note_out').id,
-			'company_id': env.company.id,
-			'print_prices': True,
-			'note': 'Tipo DDT per raccolta ordini - vendite'
-		})
+	try:
+		ddt_type_model = env['stock.delivery.note.type']
+		
+		# Tipo DDT per vendite
+		if not ddt_type_model.search([('code', '=', 'outgoing'), ('name', 'ilike', 'Raccolta')]):
+			# ✅ Usa sequenza più sicura
+			sequence_ref = env.ref('l10n_it_delivery_note_base.sequence_stock_delivery_note_out', raise_if_not_found=False)
+			if not sequence_ref:
+				# Crea sequenza se non esiste
+				sequence_ref = env['ir.sequence'].create({
+					'name': 'DDT Raccolta Ordini',
+					'code': 'stock.delivery.note.out',
+					'prefix': 'DDT/%(year)s/',
+					'suffix': '',
+					'padding': 5,
+					'company_id': env.company.id,
+				})
+			
+			ddt_type_model.create({
+				'name': 'DDT Raccolta Ordini - Vendita',
+				'code': 'outgoing',
+				'sequence_id': sequence_ref.id,
+				'company_id': env.company.id,
+				'print_prices': True,
+				'note': 'Tipo DDT per raccolta ordini - vendite'
+			})
+	except Exception as e:
+		# Log dell'errore ma non bloccare l'installazione
+		import logging
+		_logger = logging.getLogger(__name__)
+		_logger.warning(f"Errore creazione tipo DDT: {e}")
 
 
 def _cleanup_sequences(env):

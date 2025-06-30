@@ -3,81 +3,74 @@
     <data noupdate="1">
 
         <!-- ================================= -->
-        <!-- SEQUENZE GENERICHE SISTEMA        -->
+        <!-- SEQUENZE BASE RACCOLTA ORDINI     -->
         <!-- ================================= -->
 
-        <!-- Sequenza generica per ordini raccolta -->
-        <record id="sequence_generic_orders" model="ir.sequence">
-            <field name="name">Ordini Raccolta - Generico</field>
-            <field name="code">raccolta.order.generic</field>
-            <field name="prefix">ORD</field>
-            <field name="suffix"></field>
-            <field name="padding">6</field>
-            <field name="number_next">1</field>
-            <field name="number_increment">1</field>
-            <field name="implementation">standard</field>
-            <field name="company_id" ref="base.main_company"/>
-            <field name="active" eval="True"/>
-        </record>
-
-        <!-- Sequenza generica per DDT raccolta -->
-        <record id="sequence_generic_ddt" model="ir.sequence">
-            <field name="name">DDT Raccolta - Generico</field>
-            <field name="code">raccolta.ddt.generic</field>
-            <field name="prefix">DDT</field>
-            <field name="suffix"></field>
-            <field name="padding">6</field>
-            <field name="number_next">1</field>
-            <field name="number_increment">1</field>
-            <field name="implementation">standard</field>
-            <field name="company_id" ref="base.main_company"/>
-            <field name="active" eval="True"/>
-        </record>
-
-        <!-- Sequenza generica per picking raccolta -->
-        <record id="sequence_generic_picking" model="ir.sequence">
-            <field name="name">Picking Raccolta - Generico</field>
-            <field name="code">raccolta.picking.generic</field>
-            <field name="prefix">PICK</field>
-            <field name="suffix"></field>
-            <field name="padding">6</field>
-            <field name="number_next">1</field>
-            <field name="number_increment">1</field>
-            <field name="implementation">standard</field>
-            <field name="company_id" ref="base.main_company"/>
-            <field name="active" eval="True"/>
-        </record>
-
-        <!-- ================================= -->
-        <!-- SEQUENZE PER AGENTI RACCOLTA     -->
-        <!-- ================================= -->
-
-        <!-- Sequenza contatori agenti -->
-        <record id="sequence_agent_counter" model="ir.sequence">
-            <field name="name">Contatori Agenti</field>
-            <field name="code">raccolta.agent.counter</field>
-            <field name="prefix">AG</field>
-            <field name="suffix"></field>
-            <field name="padding">3</field>
-            <field name="number_next">1</field>
-            <field name="number_increment">1</field>
-            <field name="implementation">standard</field>
-            <field name="company_id" ref="base.main_company"/>
-            <field name="active" eval="True"/>
-        </record>
-
-        <!-- Sequenza sessioni raccolta -->
+        <!-- Sequenza per sessioni raccolta -->
         <record id="sequence_raccolta_session" model="ir.sequence">
             <field name="name">Sessioni Raccolta</field>
             <field name="code">raccolta.session</field>
-            <field name="prefix">SES</field>
+            <field name="prefix">SESS/%(year)s/</field>
             <field name="suffix"></field>
-            <field name="padding">6</field>
-            <field name="number_next">1</field>
-            <field name="number_increment">1</field>
-            <field name="implementation">standard</field>
-            <field name="company_id" ref="base.main_company"/>
-            <field name="active" eval="True"/>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- Sequenza globale ordini raccolta -->
+        <record id="sequence_raccolta_order_global" model="ir.sequence">
+            <field name="name">Ordini Raccolta Globali</field>
+            <field name="code">raccolta.order.global</field>
+            <field name="prefix">RO/%(year)s/</field>
+            <field name="suffix"></field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- Sequenza picking raccolta -->
+        <record id="sequence_raccolta_picking" model="ir.sequence">
+            <field name="name">Picking Raccolta</field>
+            <field name="code">raccolta.picking</field>
+            <field name="prefix">PICK/%(year)s/</field>
+            <field name="suffix"></field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- ================================= -->
+        <!-- SEQUENZE TEMPLATE PER AGENTI      -->
+        <!-- ================================= -->
+
+        <!-- Template sequenza ordini agente -->
+        <record id="sequence_template_agent_order" model="ir.sequence">
+            <field name="name">Template Ordini Agente</field>
+            <field name="code">raccolta.order.template</field>
+            <field name="prefix">RO/AGENT/%(year)s/</field>
+            <field name="suffix"></field>
+            <field name="padding">4</field>
+            <field name="active" eval="False"/>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- Template sequenza DDT agente -->
+        <record id="sequence_template_agent_ddt" model="ir.sequence">
+            <field name="name">Template DDT Agente</field>
+            <field name="code">raccolta.ddt.template</field>
+            <field name="prefix">DDT/AGENT/%(year)s/</field>
+            <field name="suffix"></field>
+            <field name="padding">4</field>
+            <field name="active" eval="False"/>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- Template sequenza picking agente -->
+        <record id="sequence_template_agent_picking" model="ir.sequence">
+            <field name="name">Template Picking Agente</field>
+            <field name="code">raccolta.picking.template</field>
+            <field name="prefix">PICK/AGENT/%(year)s/</field>
+            <field name="suffix"></field>
+            <field name="padding">4</field>
+            <field name="active" eval="False"/>
+            <field name="company_id" eval="False"/>
         </record>
 
     </data>

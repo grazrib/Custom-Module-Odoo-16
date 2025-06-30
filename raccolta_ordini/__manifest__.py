@@ -44,7 +44,7 @@ Requisiti:
 * Modulo l10n_it_delivery_note_base installato
 * Browser moderno con supporto IndexedDB
 * Stampante termica 48mm (opzionale)
-    ''',
+	''',
 	'author': 'Your Company',
 	'website': 'https://www.yourcompany.com',
 	'license': 'LGPL-3',
@@ -53,7 +53,7 @@ Requisiti:
 		'sale',
 		'stock',
 		'account',
-		'l10n_it_delivery_note',  # Modulo DDT completo (corretto)
+		'l10n_it_delivery_note_base',  # ✅ CORRETTA: modulo base per DDT
 		'web',
 		'portal',
 		'barcodes'
@@ -66,11 +66,11 @@ Requisiti:
 		'security/raccolta_security.xml',
 		'security/ir.model.access.csv',
 
-		# Data files (solo esistenti)
+		# Data files
 		'data/raccolta_config_data.xml',
 		'data/sequence_data.xml',
 
-		# Views (solo esistenti)
+		# Views
 		'views/raccolta_assets.xml',
 		'views/raccolta_index.xml',
 		'views/raccolta_config_view.xml',
@@ -80,17 +80,13 @@ Requisiti:
 		'views/stock_picking_view.xml',
 		'views/raccolta_menus.xml',
 
-		# Wizards (solo se esistenti)
-		# 'wizards/mass_sync_wizard_view.xml',
-		# 'wizards/setup_agent_wizard_view.xml',
-		# 'wizards/export_data_wizard_view.xml',
+		# Wizards ✅ AGGIUNTI
+		'wizards/mass_sync_wizard_view.xml',
 
-		# Reports (solo se esistenti)
-		# 'reports/order_report_template.xml',
-		# 'reports/agent_performance_template.xml',
+		# Reports ✅ AGGIUNTI
+		'reports/receipt_templates.xml',
 	],
 	'assets': {
-		# Asset bundle minimale per funzionamento base
 		'web.assets_backend': [
 			'raccolta_ordini/static/src/css/raccolta_backend.css',
 			'raccolta_ordini/static/src/js/backend_integration.js',
@@ -100,10 +96,6 @@ Requisiti:
 			'raccolta_ordini/static/src/js/frontend_app.js',
 		],
 	},
-	'demo': [
-		# Solo se esistenti
-		# 'demo/raccolta_demo_data.xml',
-	],
 	'images': [
 		'static/description/icon.png',
 	],
@@ -112,7 +104,4 @@ Requisiti:
 	'auto_install': False,
 	'post_init_hook': 'post_init_hook',
 	'uninstall_hook': 'uninstall_hook',
-
-	# Configurazione price_depend per DDT
-# 	'price_depend': ['l10n_it_delivery_note_base'],
 }

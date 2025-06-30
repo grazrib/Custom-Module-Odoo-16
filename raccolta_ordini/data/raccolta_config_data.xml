@@ -3,66 +3,26 @@
     <data noupdate="1">
 
         <!-- ================================= -->
-        <!-- CONFIGURAZIONE DEFAULT            -->
+        <!-- CONFIGURAZIONE DEFAULT             -->
         <!-- ================================= -->
 
-        <!-- Configurazione di default per l'azienda principale -->
-        <record id="default_raccolta_config" model="raccolta.config">
-            <field name="name">Configurazione Default Raccolta</field>
-            <field name="company_id" ref="base.main_company"/>
+        <!-- Configurazione default viene creata dal post_init_hook -->
+        <!-- Questo file è pronto per eventuali configurazioni aggiuntive -->
+
+        <!-- ================================= -->
+        <!-- DATI DEMO (OPZIONALI)             -->
+        <!-- ================================= -->
+
+        <!-- Configurazione Demo (solo se necessaria) 
+        <record id="raccolta_config_demo" model="raccolta.config">
+            <field name="name">Configurazione Demo</field>
+            <field name="active" eval="False"/>
             <field name="warehouse_id" ref="stock.warehouse0"/>
-            <field name="active" eval="True"/>
-            <field name="use_agent_numbering" eval="True"/>
             <field name="receipt_format">48mm</field>
             <field name="auto_create_ddt" eval="True"/>
-            <field name="auto_print_receipt" eval="True"/>
-            <field name="barcode_scanner" eval="True"/>
-            <field name="signature_enabled" eval="True"/>
-            <field name="max_offline_days" eval="7"/>
-            <field name="sync_batch_size" eval="50"/>
+            <field name="use_agent_numbering" eval="True"/>
         </record>
-
-        <!-- ================================= -->
-        <!-- PARAMETRI SISTEMA                 -->
-        <!-- ================================= -->
-
-        <!-- Parametro: Versione modulo -->
-        <record id="param_module_version" model="ir.config_parameter">
-            <field name="key">raccolta.module_version</field>
-            <field name="value">16.0.1.0.0</field>
-        </record>
-
-        <!-- Parametro: Debug mode -->
-        <record id="param_debug_mode" model="ir.config_parameter">
-            <field name="key">raccolta.debug_mode</field>
-            <field name="value">False</field>
-        </record>
-
-        <!-- Parametro: API timeout -->
-        <record id="param_api_timeout" model="ir.config_parameter">
-            <field name="key">raccolta.api_timeout</field>
-            <field name="value">30</field>
-        </record>
-
-        <!-- Parametro: Max file size per upload -->
-        <record id="param_max_file_size" model="ir.config_parameter">
-            <field name="key">raccolta.max_file_size_mb</field>
-            <field name="value">10</field>
-        </record>
-
-        <!-- ================================= -->
-        <!-- SEQUENZE BASE                     -->
-        <!-- ================================= -->
-
-        <!-- Sequenza per agenti generici -->
-        <record id="sequence_agent_generic" model="ir.sequence">
-            <field name="name">Agenti - Generico</field>
-            <field name="code">raccolta.agent.generic</field>
-            <field name="prefix">AG</field>
-            <field name="padding">3</field>
-            <field name="number_next">1</field>
-            <field name="company_id" ref="base.main_company"/>
-        </record>
+        -->
 
     </data>
 </odoo>

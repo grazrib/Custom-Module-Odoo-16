@@ -1,87 +1,118 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- ================================= -->
-    <!-- MENU PRINCIPALE RACCOLTA ORDINI  -->
-    <!-- ================================= -->
+    <data>
+        <!-- ================================= -->
+        <!-- MENU PRINCIPALE RACCOLTA ORDINI  -->
+        <!-- ================================= -->
 
-    <menuitem id="menu_raccolta_root"
-              name="Raccolta Ordini"
-              sequence="85"
-              groups="group_raccolta_agent"
-              web_icon="raccolta_ordini,static/description/icon.png"/>
+        <menuitem id="menu_raccolta_root"
+                  name="Raccolta Ordini"
+                  sequence="85"
+                  groups="group_raccolta_agent"
+                  web_icon="raccolta_ordini,static/description/icon.png"/>
 
-    <!-- ================================= -->
-    <!-- SOTTOMENU OPERAZIONI              -->
-    <!-- ================================= -->
+        <!-- ================================= -->
+        <!-- SOTTOMENU OPERAZIONI              -->
+        <!-- ================================= -->
 
-    <menuitem id="menu_raccolta_operations"
-              name="Operazioni"
-              parent="menu_raccolta_root"
-              sequence="10"/>
+        <menuitem id="menu_raccolta_operations"
+                  name="Operazioni"
+                  parent="menu_raccolta_root"
+                  sequence="10"/>
 
-    <!-- Sessioni raccolta -->
-    <menuitem id="menu_raccolta_sessions"
-              name="Sessioni"
-              parent="menu_raccolta_operations"
-              action="action_raccolta_session"
-              sequence="10"
-              groups="group_raccolta_agent"/>
+        <!-- Sessioni raccolta -->
+        <menuitem id="menu_raccolta_sessions"
+                  name="Sessioni"
+                  parent="menu_raccolta_operations"
+                  action="action_raccolta_session"
+                  sequence="10"
+                  groups="group_raccolta_agent"/>
 
-    <!-- ================================= -->
-    <!-- SOTTOMENU DOCUMENTI               -->
-    <!-- ================================= -->
+        <!-- ✅ Sincronizzazione Batch -->
+        <menuitem id="menu_mass_sync_wizard"
+                  name="Sincronizzazione Batch"
+                  parent="menu_raccolta_operations"
+                  action="action_mass_sync_wizard"
+                  sequence="15"
+                  groups="group_raccolta_supervisor"/>
 
-    <menuitem id="menu_raccolta_documents"
-              name="Documenti"
-              parent="menu_raccolta_root"
-              sequence="20"/>
+        <!-- ================================= -->
+        <!-- SOTTOMENU DOCUMENTI               -->
+        <!-- ================================= -->
 
-    <!-- Ordini raccolta -->
-    <menuitem id="menu_raccolta_orders"
-              name="Ordini"
-              parent="menu_raccolta_documents"
-              action="action_raccolta_orders"
-              sequence="10"
-              groups="group_raccolta_agent"/>
+        <menuitem id="menu_raccolta_documents"
+                  name="Documenti"
+                  parent="menu_raccolta_root"
+                  sequence="20"/>
 
-    <!-- Picking raccolta -->
-    <menuitem id="menu_raccolta_pickings"
-              name="Picking"
-              parent="menu_raccolta_documents"
-              action="action_picking_raccolta"
-              sequence="20"
-              groups="group_raccolta_agent"/>
+        <!-- Ordini raccolta -->
+        <menuitem id="menu_raccolta_orders"
+                  name="Ordini"
+                  parent="menu_raccolta_documents"
+                  action="action_raccolta_orders"
+                  sequence="10"
+                  groups="group_raccolta_agent"/>
 
-    <!-- ================================= -->
-    <!-- SOTTOMENU CONFIGURAZIONE          -->
-    <!-- ================================= -->
+        <!-- Picking raccolta -->
+        <menuitem id="menu_raccolta_pickings"
+                  name="Picking"
+                  parent="menu_raccolta_documents"
+                  action="action_picking_raccolta"
+                  sequence="20"
+                  groups="group_raccolta_agent"/>
 
-    <menuitem id="menu_raccolta_config"
-              name="Configurazione"
-              parent="menu_raccolta_root"
-              sequence="30"
-              groups="group_raccolta_manager"/>
+        <!-- ================================= -->
+        <!-- SOTTOMENU STAMPE                  -->
+        <!-- ================================= -->
 
-    <!-- Configurazioni raccolta -->
-    <menuitem id="menu_raccolta_configs"
-              name="Configurazioni"
-              parent="menu_raccolta_config"
-              action="action_raccolta_config"
-              sequence="10"/>
+        <menuitem id="menu_raccolta_reports"
+                  name="Stampe"
+                  parent="menu_raccolta_root"
+                  sequence="25"/>
 
-    <!-- Gestione agenti -->
-    <menuitem id="menu_raccolta_agents"
-              name="Agenti"
-              parent="menu_raccolta_config"
-              action="action_raccolta_agents"
-              sequence="20"/>
+        <!-- ✅ Ricevute Termiche -->
+        <menuitem id="menu_receipt_thermal"
+                  name="Ricevute Termiche"
+                  parent="menu_raccolta_reports"
+                  sequence="10"
+                  groups="group_raccolta_agent"/>
 
-    <!-- ================================= -->
-    <!-- AZIONI CORRISPONDENTI             -->
-    <!-- ================================= -->
+        <!-- Sottomenu ricevute -->
+        <menuitem id="menu_receipt_48mm"
+                  name="Ricevute 48mm"
+                  parent="menu_receipt_thermal"
+                  action="action_report_receipt_48mm"
+                  sequence="10"/>
 
-    <!-- Nota: Le azioni action_raccolta_session, action_raccolta_orders, 
-         action_picking_raccolta, action_raccolta_config, e action_raccolta_agents 
-         sono definite nei rispettivi file di vista -->
+        <menuitem id="menu_receipt_80mm"
+                  name="Ricevute 80mm"
+                  parent="menu_receipt_thermal"
+                  action="action_report_receipt_80mm"
+                  sequence="20"/>
 
+        <!-- ================================= -->
+        <!-- SOTTOMENU CONFIGURAZIONE          -->
+        <!-- ================================= -->
+
+        <menuitem id="menu_raccolta_config"
+                  name="Configurazione"
+                  parent="menu_raccolta_root"
+                  sequence="30"
+                  groups="group_raccolta_manager"/>
+
+        <!-- Configurazioni raccolta -->
+        <menuitem id="menu_raccolta_configs"
+                  name="Configurazioni"
+                  parent="menu_raccolta_config"
+                  action="action_raccolta_config"
+                  sequence="10"/>
+
+        <!-- Gestione agenti -->
+        <menuitem id="menu_raccolta_agents"
+                  name="Agenti"
+                  parent="menu_raccolta_config"
+                  action="action_raccolta_agents"
+                  sequence="20"/>
+
+    </data>
 </odoo>

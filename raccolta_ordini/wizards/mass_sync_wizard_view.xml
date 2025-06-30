@@ -1,72 +1,173 @@
- <?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
 
-        <!-- Vista form wizard sincronizzazione massiva -->
+        <!-- ================================= -->
+        <!-- WIZARD SINCRONIZZAZIONE BATCH     -->
+        <!-- ================================= -->
+
         <record id="view_mass_sync_wizard_form" model="ir.ui.view">
-            <field name="name">raccolta.mass.sync.wizard.form</field>
+            <field name="name">Sincronizzazione Batch - Form</field>
             <field name="model">raccolta.mass.sync.wizard</field>
             <field name="arch" type="xml">
-                <form string="Sincronizzazione Massiva">
+                <form string="Sincronizzazione Batch Ordini">
+                    <header>
+                        <button name="action_start_sync" 
+                                string="Avvia Sincronizzazione" 
+                                type="object" 
+                                class="btn-primary"
+                                attrs="{'invisible': [('state', '!=', 'draft')]}"/>
+                        <button name="action_preview_orders" 
+                                string="Anteprima Ordini" 
+                                type="object" 
+                                class="btn-secondary"
+                                attrs="{'invisible': [('state', '!=', 'draft')]}"/>
+                        <button name="action_export_log" 
+                                string="Esporta Log" 
+                                type="object" 
+                                class="btn-secondary"
+                                attrs="{'invisible': [('result_log', '=', False)]}"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,running,done"/>
+                    </header>
+                    
                     <sheet>
                         <div class="oe_title">
                             <h1>
-                                <field name="id" invisible="1"/>
-                                Sincronizzazione Massiva Ordini
+                                <field name="sync_mode" invisible="1"/>
+                                Sincronizzazione Batch Ordini Offline
                             </h1>
                         </div>
 
-                        <group invisible="context.get('show_results', False)">
-                            <group string="Filtri Selezione">
-                                <field name="agent_ids" widget="many2many_tags"
-                                       placeholder="Tutti gli agenti"/>
-                                <field name="date_from"/>
-                                <field name="date_to"/>
+                        <!-- Filtri di Selezione -->
+                        <group string="Filtri di Selezione" attrs="{'invisible': [('state', '!=', 'draft')]}">
+                            <group>
+                                <field name="sync_mode" widget="radio"/>
                             </group>
+                            <group>
+                                <field name="agent_id" 
+                                       attrs="{'invisible': [('sync_mode', '!=', 'by_agent')], 
+                                               'required': [('sync_mode', '=', 'by_agent')]}"/>
+                                <field name="session_id" 
+                                       attrs="{'invisible': [('sync_mode', '!=', 'by_session')], 
+                                               'required': [('sync_mode', '=', 'by_session')]}"/>
+                                <field name="date_from" 
+                                       attrs="{'invisible': [('sync_mode', '!=', 'by_date_range')], 
+                                               'required': [('sync_mode', '=', 'by_date_range')]}"/>
+                                <field name="date_to" 
+                                       attrs="{'invisible': [('sync_mode', '!=', 'by_date_range')], 
+                                               'required': [('sync_mode', '=', 'by_date_range')]}"/>
+                            </group>
+                        </group>
 
-                            <group string="Tipi Sincronizzazione">
-                                <field name="sync_orders"/>
+                        <!-- Selezione Manuale -->
+                        <group string="Selezione Manuale" 
+                               attrs="{'invisible': [('sync_mode', '!=', 'manual_selection')]}">
+                            <field name="order_ids" nolabel="1" 
+                                   attrs="{'required': [('sync_mode', '=', 'manual_selection')]}">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="partner_id"/>
+                                    <field name="agent_code"/>
+                                    <field name="offline_created_at"/>
+                                    <field name="amount_total"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </group>
+
+                        <!-- Opzioni di Sincronizzazione -->
+                        <group string="Opzioni di Sincronizzazione" attrs="{'invisible': [('state', '!=', 'draft')]}">
+                            <group>
                                 <field name="sync_pickings"/>
-                                <field name="sync_counters"/>
+                                <field name="sync_ddts"/>
+                                <field name="auto_confirm_orders"/>
+                            </group>
+                            <group>
+                                <field name="auto_validate_pickings"/>
+                                <field name="ignore_errors"/>
                             </group>
                         </group>
 
-                        <group invisible="context.get('show_results', False)">
-                            <group string="Opzioni Avanzate">
-                                <field name="force_sync"/>
-                                <field name="validate_documents"/>
+                        <!-- Statistiche -->
+                        <group string="Statistiche">
+                            <group>
+                                <field name="orders_to_sync_count" 
+                                       attrs="{'invisible': [('state', '!=', 'draft')]}"/>
+                                <field name="orders_synced_count" 
+                                       attrs="{'invisible': [('state', 'in', ['draft'])]}"/>
+                            </group>
+                            <group>
+                                <field name="orders_error_count" 
+                                       attrs="{'invisible': [('state', 'in', ['draft'])]}"/>
                             </group>
                         </group>
 
-                        <group invisible="not context.get('show_results', False)">
-                            <group string="Risultati Sincronizzazione" colspan="2">
-                                <field name="result_summary" nolabel="1"
-                                       widget="text" readonly="1"/>
-                            </group>
+                        <!-- Log Risultati -->
+                        <group string="Log Operazioni" attrs="{'invisible': [('result_log', '=', False)]}">
+                            <field name="result_log" nolabel="1" 
+                                   widget="text" 
+                                   readonly="1"
+                                   attrs="{'invisible': [('result_log', '=', False)]}"/>
                         </group>
+
+                        <!-- Indicatore di Progresso -->
+                        <div attrs="{'invisible': [('state', '!=', 'running')]}" 
+                             class="alert alert-info">
+                            <p>
+                                <i class="fa fa-spinner fa-spin"/> 
+                                Sincronizzazione in corso... Attendere prego.
+                            </p>
+                        </div>
+
+                        <!-- Messaggio di Successo -->
+                        <div attrs="{'invisible': [('state', '!=', 'done')]}" 
+                             class="alert alert-success">
+                            <p>
+                                <i class="fa fa-check-circle"/> 
+                                Sincronizzazione completata con successo!
+                            </p>
+                        </div>
+
+                        <!-- Messaggio di Errore -->
+                        <div attrs="{'invisible': [('state', '!=', 'error')]}" 
+                             class="alert alert-danger">
+                            <p>
+                                <i class="fa fa-exclamation-triangle"/> 
+                                Sincronizzazione interrotta a causa di errori.
+                            </p>
+                        </div>
 
                     </sheet>
-                    <footer>
-                        <button string="Sincronizza" name="action_sync" type="object"
-                                class="btn-primary"
-                                invisible="context.get('show_results', False)"/>
-                        <button string="Stato Sincronizzazione" name="action_view_sync_status"
-                                type="object" class="btn-secondary"
-                                invisible="not context.get('show_results', False)"/>
-                        <button string="Chiudi" special="cancel" class="btn-secondary"/>
-                    </footer>
                 </form>
             </field>
         </record>
 
-        <!-- Azione wizard -->
+        <!-- ================================= -->
+        <!-- ACTION WIZARD                     -->
+        <!-- ================================= -->
+
         <record id="action_mass_sync_wizard" model="ir.actions.act_window">
-            <field name="name">Sincronizzazione Massiva</field>
+            <field name="name">Sincronizzazione Batch</field>
             <field name="res_model">raccolta.mass.sync.wizard</field>
             <field name="view_mode">form</field>
             <field name="target">new</field>
-            <field name="binding_model_id" ref="model_sale_order"/>
-            <field name="binding_view_types">list</field>
+            <field name="context">{}</field>
+        </record>
+
+        <!-- ================================= -->
+        <!-- CRON JOB SINCRONIZZAZIONE AUTO   -->
+        <!-- ================================= -->
+
+        <record id="cron_auto_sync_orders" model="ir.cron">
+            <field name="name">Auto Sync Ordini Raccolta</field>
+            <field name="model_id" ref="model_raccolta_mass_sync_wizard"/>
+            <field name="state">code</field>
+            <field name="code">env['raccolta.mass.sync.wizard'].auto_sync_pending_orders()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">hours</field>
+            <field name="numbercall">-1</field>
+            <field name="active" eval="False"/>
+            <field name="user_id" ref="base.user_root"/>
         </record>
 
     </data>

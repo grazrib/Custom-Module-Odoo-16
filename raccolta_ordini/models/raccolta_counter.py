@@ -160,32 +160,30 @@ class RaccoltaCounter(models.Model):
 			counter = self.create({
 				'user_id': user_id,
 				'document_type': document_type,
+				'prefix': prefix_map.get(document_type, 'DOC/'),
 				'current_number': 1,
-				'prefix': prefix_map.get(document_type, ''),
-				'padding': 3,
-				'active': True
 			})
 
 		return counter
 
 	def reserve_numbers(self, count):
-		"""Riserva una quantità di numeri per uso offline"""
+		"""Riserva numeri per uso offline"""
 		self.ensure_one()
 
 		if count <= 0:
 			raise UserError(_('La quantità deve essere maggiore di zero'))
 
 		# Calcola range di prenotazione
-		start = self.current_number + 1
+		start = self.current_number
 		end = start + count - 1
 
 		# Aggiorna contatore
 		self.write({
-			'current_number': end,
+			'current_number': end + 1,
 			'reserved_start': start,
 			'reserved_end': end,
-			'last_used_number': start - 1,  # Reset ultimo usato
-			'last_reservation_at': fields.Datetime.now()
+			'last_used_number': start - 1,  # Ultimo usato prima della prenotazione
+			'last_reservation_at': fields.Datetime.now(),
 		})
 
 		return {
@@ -193,32 +191,33 @@ class RaccoltaCounter(models.Model):
 			'end': end,
 			'count': count,
 			'prefix': self.prefix,
-			'format': f"{self.prefix}{{:{self.padding:02d}d}}"
 		}
 
-	def get_next_number_offline(self):
-		"""Ottiene prossimo numero per uso offline"""
+	def get_next_number(self):
+		"""Ottiene il prossimo numero disponibile"""
 		self.ensure_one()
 
-		if not self.reserved_start or not self.reserved_end:
-			raise UserError(_('Nessun numero riservato per uso offline'))
+		# Se abbiamo numeri riservati disponibili
+		if self.available_count > 0:
+			next_number = self.last_used_number + 1
+			self.write({
+				'last_used_number': next_number,
+				'last_sync_at': fields.Datetime.now(),
+			})
+			return self._format_number(next_number)
 
-		next_number = (self.last_used_number or self.reserved_start - 1) + 1
+		# Altrimenti usa numerazione normale
+		next_number = self.current_number
+		self.write({
+			'current_number': next_number + 1,
+			'last_sync_at': fields.Datetime.now(),
+		})
+		return self._format_number(next_number)
 
-		if next_number > self.reserved_end:
-			raise UserError(_('Numeri riservati esauriti. Sincronizza per ottenerne altri.'))
-
-		# Aggiorna ultimo usato
-		self.last_used_number = next_number
-
-		# Formatta numero completo
-		formatted_number = f"{self.prefix}{next_number:0{self.padding}d}"
-
-		return {
-			'number': next_number,
-			'formatted': formatted_number,
-			'remaining': self.reserved_end - next_number
-		}
+	def _format_number(self, number):
+		"""Formatta numero con prefisso e padding"""
+		formatted = str(number).zfill(self.padding)
+		return f"{self.prefix}{formatted}"
 
 	def sync_used_numbers(self, used_numbers):
 		"""Sincronizza numeri utilizzati offline"""
@@ -227,32 +226,47 @@ class RaccoltaCounter(models.Model):
 		if not used_numbers:
 			return
 
-		max_used = max(used_numbers)
-
-		# Verifica che i numeri usati siano nell'intervallo riservato
-		if (self.reserved_start and max_used < self.reserved_start) or \
-				(self.reserved_end and max_used > self.reserved_end):
-			raise UserError(_('Numeri utilizzati fuori dall\'intervallo riservato'))
-
 		# Aggiorna ultimo numero usato
-		if max_used > (self.last_used_number or 0):
+		max_used = max(used_numbers)
+		if max_used > self.last_used_number:
 			self.write({
 				'last_used_number': max_used,
-				'last_sync_at': fields.Datetime.now()
+				'last_sync_at': fields.Datetime.now(),
 			})
 
-	def reset_reservation(self):
-		"""Reset prenotazione numeri"""
+	def reset_counter(self):
+		"""Reset contatore (utile per test)"""
 		self.ensure_one()
 
 		self.write({
+			'current_number': 1,
 			'reserved_start': False,
 			'reserved_end': False,
-			'last_used_number': False
+			'last_used_number': 0,
 		})
 
-	def get_status(self):
-		"""Ottiene stato attuale del contatore"""
+	@api.model
+	def cleanup_expired_reservations(self):
+		"""Pulisce prenotazioni scadute (da eseguire con cron)"""
+		# Trova prenotazioni più vecchie di 24 ore
+		expired_date = fields.Datetime.now() - timedelta(hours=24)
+		
+		expired_counters = self.search([
+			('reserved_start', '!=', False),
+			('last_reservation_at', '<', expired_date),
+		])
+
+		for counter in expired_counters:
+			# Se non sono stati usati numeri, libera la prenotazione
+			if counter.last_used_number < counter.reserved_start:
+				counter.write({
+					'current_number': counter.reserved_start,
+					'reserved_start': False,
+					'reserved_end': False,
+				})
+
+	def get_counter_status(self):
+		"""Ottiene stato completo del contatore"""
 		self.ensure_one()
 
 		return {
@@ -260,58 +274,9 @@ class RaccoltaCounter(models.Model):
 			'user_name': self.user_id.name,
 			'document_type': self.document_type,
 			'current_number': self.current_number,
+			'reserved_count': self.reserved_count,
+			'available_count': self.available_count,
 			'prefix': self.prefix,
-			'reserved': {
-				'start': self.reserved_start,
-				'end': self.reserved_end,
-				'count': self.reserved_count,
-				'available': self.available_count,
-				'last_used': self.last_used_number
-			},
-			'last_sync': self.last_sync_at.isoformat() if self.last_sync_at else None,
-			'last_reservation': self.last_reservation_at.isoformat() if self.last_reservation_at else None,
-			'active': self.active
-		}
-
-	@api.model
-	def get_user_counters_status(self, user_id):
-		"""Ottiene stato di tutti i contatori di un utente"""
-		counters = self.search([('user_id', '=', user_id)])
-
-		status = {}
-		for counter in counters:
-			status[counter.document_type] = counter.get_status()
-
-		return status
-
-	@api.model
-	def cleanup_old_reservations(self, days=7):
-		"""Pulisce prenotazioni vecchie non utilizzate"""
-		cutoff_date = fields.Datetime.now() - timedelta(days=days)
-
-		old_counters = self.search([
-			('last_reservation_at', '<', cutoff_date),
-			('last_used_number', '=', False),
-			('reserved_start', '!=', False)
-		])
-
-		for counter in old_counters:
-			counter.reset_reservation()
-
-		return len(old_counters)
-
-	def action_reserve_numbers_wizard(self):
-		"""Apre wizard per prenotazione numeri"""
-		self.ensure_one()
-
-		return {
-			'type': 'ir.actions.act_window',
-			'name': _('Prenota Numeri'),
-			'view_mode': 'form',
-			'res_model': 'raccolta.counter.reserve.wizard',
-			'target': 'new',
-			'context': {
-				'default_counter_id': self.id,
-				'default_document_type': self.document_type
-			}
+			'last_sync_at': self.last_sync_at.isoformat() if self.last_sync_at else None,
+			'active': self.active,
 		}

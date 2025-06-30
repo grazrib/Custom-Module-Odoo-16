@@ -1,290 +1,430 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import base64
 from datetime import datetime, timedelta
-from odoo import models, fields, api, _
-from odoo.exceptions import UserError, ValidationError
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
 
 class MassSyncWizard(models.TransientModel):
-	_name = 'raccolta.mass.sync.wizard'
-	_description = 'Wizard Sincronizzazione Massiva'
+    """Wizard per sincronizzazione batch ordini offline"""
+    _name = 'raccolta.mass.sync.wizard'
+    _description = 'Sincronizzazione Batch Ordini Raccolta'
 
-	# Filtri selezione
-	agent_ids = fields.Many2many(
-		'res.users',
-		string='Agenti',
-		domain=[('is_raccolta_agent', '=', True)],
-		help='Lasciare vuoto per tutti gli agenti'
-	)
+    # === CONFIGURAZIONE SYNC ===
+    sync_mode = fields.Selection([
+        ('all_pending', 'Tutti gli ordini pendenti'),
+        ('by_agent', 'Per agente specifico'),
+        ('by_session', 'Per sessione specifica'),
+        ('by_date_range', 'Per intervallo date'),
+        ('manual_selection', 'Selezione manuale'),
+    ], string='Modalità Sincronizzazione',
+       default='all_pending',
+       required=True,
+       help='Modalità di selezione ordini da sincronizzare')
 
-	date_from = fields.Datetime(
-		string='Data Da',
-		default=lambda self: fields.Datetime.now() - timedelta(days=7),
-		required=True
-	)
+    # === FILTRI ===
+    agent_id = fields.Many2one(
+        'res.users',
+        string='Agente',
+        domain=[('is_raccolta_agent', '=', True)],
+        help='Agente per cui sincronizzare gli ordini'
+    )
 
-	date_to = fields.Datetime(
-		string='Data A',
-		default=fields.Datetime.now,
-		required=True
-	)
+    session_id = fields.Many2one(
+        'raccolta.session',
+        string='Sessione',
+        help='Sessione specifica da sincronizzare'
+    )
 
-	# Tipi di sincronizzazione
-	sync_orders = fields.Boolean(
-		string='Sincronizza Ordini',
-		default=True,
-		help='Sincronizza ordini di vendita'
-	)
+    date_from = fields.Datetime(
+        string='Data da',
+        help='Data inizio per filtro per date'
+    )
 
-	sync_pickings = fields.Boolean(
-		string='Sincronizza Picking',
-		default=True,
-		help='Sincronizza documenti di trasporto'
-	)
+    date_to = fields.Datetime(
+        string='Data a',
+        default=fields.Datetime.now,
+        help='Data fine per filtro per date'
+    )
 
-	sync_counters = fields.Boolean(
-		string='Aggiorna Contatori',
-		default=True,
-		help='Aggiorna contatori numerazione'
-	)
+    order_ids = fields.Many2many(
+        'sale.order',
+        string='Ordini Selezionati',
+        domain=[('is_offline_order', '=', True), ('synced_to_odoo', '=', False)],
+        help='Ordini selezionati manualmente per sincronizzazione'
+    )
 
-	# Opzioni avanzate
-	force_sync = fields.Boolean(
-		string='Forza Sincronizzazione',
-		default=False,
-		help='Forza sincronizzazione anche se già sincronizzato'
-	)
+    # === OPZIONI ===
+    sync_pickings = fields.Boolean(
+        string='Sincronizza Picking',
+        default=True,
+        help='Sincronizza anche i picking collegati'
+    )
 
-	validate_documents = fields.Boolean(
-		string='Valida Documenti',
-		default=True,
-		help='Valida automaticamente i documenti sincronizzati'
-	)
+    sync_ddts = fields.Boolean(
+        string='Sincronizza DDT',
+        default=True,
+        help='Sincronizza anche i DDT collegati'
+    )
 
-	# Risultati
-	result_summary = fields.Text(
-		string='Risultato',
-		readonly=True
-	)
+    auto_confirm_orders = fields.Boolean(
+        string='Conferma Ordini Automaticamente',
+        default=False,
+        help='Conferma automaticamente gli ordini dopo la sincronizzazione'
+    )
 
-	@api.constrains('date_from', 'date_to')
-	def _check_dates(self):
-		"""Valida date"""
-		for wizard in self:
-			if wizard.date_from >= wizard.date_to:
-				raise ValidationError(_('La data di inizio deve essere precedente alla data di fine'))
+    auto_validate_pickings = fields.Boolean(
+        string='Valida Picking Automaticamente',
+        default=False,
+        help='Valida automaticamente i picking dopo la sincronizzazione'
+    )
 
-	def action_sync(self):
-		"""Esegue sincronizzazione massiva"""
-		self.ensure_one()
+    ignore_errors = fields.Boolean(
+        string='Ignora Errori',
+        default=False,
+        help='Continua la sincronizzazione anche in caso di errori'
+    )
 
-		if not any([self.sync_orders, self.sync_pickings, self.sync_counters]):
-			raise UserError(_('Selezionare almeno un tipo di sincronizzazione'))
+    # === RISULTATI ===
+    state = fields.Selection([
+        ('draft', 'Bozza'),
+        ('running', 'In Esecuzione'),
+        ('done', 'Completato'),
+        ('error', 'Errore'),
+    ], string='Stato', default='draft')
 
-		# Agenti da sincronizzare
-		agents = self.agent_ids
-		if not agents:
-			agents = self.env['res.users'].search([('is_raccolta_agent', '=', True)])
+    result_log = fields.Text(
+        string='Log Risultati',
+        readonly=True,
+        help='Log dettagliato dell\'operazione di sincronizzazione'
+    )
 
-		if not agents:
-			raise UserError(_('Nessun agente trovato'))
+    orders_to_sync_count = fields.Integer(
+        string='Ordini da Sincronizzare',
+        compute='_compute_orders_to_sync',
+        help='Numero di ordini che verranno sincronizzati'
+    )
 
-		results = {
-			'agents_processed': 0,
-			'orders_synced': 0,
-			'pickings_synced': 0,
-			'counters_updated': 0,
-			'errors': []
-		}
+    orders_synced_count = fields.Integer(
+        string='Ordini Sincronizzati',
+        readonly=True,
+        help='Numero di ordini sincronizzati con successo'
+    )
 
-		for agent in agents:
-			try:
-				agent_results = self._sync_agent(agent)
-				results['agents_processed'] += 1
-				results['orders_synced'] += agent_results.get('orders', 0)
-				results['pickings_synced'] += agent_results.get('pickings', 0)
-				results['counters_updated'] += agent_results.get('counters', 0)
+    orders_error_count = fields.Integer(
+        string='Ordini con Errori',
+        readonly=True,
+        help='Numero di ordini con errori di sincronizzazione'
+    )
 
-			except Exception as e:
-				error_msg = f"Errore agente {agent.name}: {str(e)}"
-				results['errors'].append(error_msg)
-				_logger.error(error_msg)
+    # === COMPUTED FIELDS ===
+    @api.depends('sync_mode', 'agent_id', 'session_id', 'date_from', 'date_to', 'order_ids')
+    def _compute_orders_to_sync(self):
+        """Calcola ordini da sincronizzare in base ai filtri"""
+        for wizard in self:
+            orders = wizard._get_orders_to_sync()
+            wizard.orders_to_sync_count = len(orders)
 
-		# Aggiorna risultati
-		self._update_results(results)
+    # === ONCHANGE ===
+    @api.onchange('sync_mode')
+    def _onchange_sync_mode(self):
+        """Reset campi quando cambia modalità"""
+        if self.sync_mode != 'by_agent':
+            self.agent_id = False
+        if self.sync_mode != 'by_session':
+            self.session_id = False
+        if self.sync_mode != 'by_date_range':
+            self.date_from = False
+            self.date_to = fields.Datetime.now()
+        if self.sync_mode != 'manual_selection':
+            self.order_ids = False
 
-		return {
-			'type': 'ir.actions.act_window',
-			'name': _('Risultati Sincronizzazione'),
-			'res_model': 'raccolta.mass.sync.wizard',
-			'res_id': self.id,
-			'view_mode': 'form',
-			'target': 'new',
-			'context': {'show_results': True}
-		}
+    @api.onchange('agent_id')
+    def _onchange_agent_id(self):
+        """Aggiorna dominio sessioni quando cambia agente"""
+        if self.agent_id:
+            return {
+                'domain': {
+                    'session_id': [('user_id', '=', self.agent_id.id)]
+                }
+            }
+        else:
+            return {
+                'domain': {
+                    'session_id': []
+                }
+            }
 
-	def _sync_agent(self, agent):
-		"""Sincronizza singolo agente"""
-		results = {'orders': 0, 'pickings': 0, 'counters': 0}
+    # === BUSINESS METHODS ===
+    def _get_orders_to_sync(self):
+        """Ottiene ordini da sincronizzare in base ai filtri"""
+        self.ensure_one()
 
-		# Sincronizza ordini
-		if self.sync_orders:
-			orders = self._get_agent_orders(agent)
-			for order in orders:
-				if self._should_sync_order(order):
-					self._sync_order(order)
-					results['orders'] += 1
+        base_domain = [
+            ('is_offline_order', '=', True),
+            ('synced_to_odoo', '=', False)
+        ]
 
-		# Sincronizza picking
-		if self.sync_pickings:
-			pickings = self._get_agent_pickings(agent)
-			for picking in pickings:
-				if self._should_sync_picking(picking):
-					self._sync_picking(picking)
-					results['pickings'] += 1
+        if self.sync_mode == 'all_pending':
+            # Tutti gli ordini pendenti
+            domain = base_domain
+            
+        elif self.sync_mode == 'by_agent':
+            # Per agente specifico
+            if not self.agent_id:
+                return self.env['sale.order']
+            domain = base_domain + [
+                ('raccolta_session_id.user_id', '=', self.agent_id.id)
+            ]
+            
+        elif self.sync_mode == 'by_session':
+            # Per sessione specifica
+            if not self.session_id:
+                return self.env['sale.order']
+            domain = base_domain + [
+                ('raccolta_session_id', '=', self.session_id.id)
+            ]
+            
+        elif self.sync_mode == 'by_date_range':
+            # Per intervallo date
+            if not self.date_from or not self.date_to:
+                return self.env['sale.order']
+            domain = base_domain + [
+                ('offline_created_at', '>=', self.date_from),
+                ('offline_created_at', '<=', self.date_to)
+            ]
+            
+        elif self.sync_mode == 'manual_selection':
+            # Selezione manuale
+            return self.order_ids
+            
+        else:
+            return self.env['sale.order']
 
-		# Aggiorna contatori
-		if self.sync_counters:
-			if self._update_agent_counters(agent):
-				results['counters'] += 1
+        return self.env['sale.order'].search(domain)
 
-		return results
+    def action_preview_orders(self):
+        """Anteprima ordini che verranno sincronizzati"""
+        self.ensure_one()
+        
+        orders = self._get_orders_to_sync()
+        
+        if not orders:
+            raise UserError(_('Nessun ordine trovato con i filtri specificati'))
+        
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Ordini da Sincronizzare'),
+            'res_model': 'sale.order',
+            'view_mode': 'tree,form',
+            'domain': [('id', 'in', orders.ids)],
+            'context': {'search_default_group_by_agent': 1},
+            'target': 'new',
+        }
 
-	def _get_agent_orders(self, agent):
-		"""Recupera ordini agente nel periodo"""
-		domain = [
-			('user_id', '=', agent.id),
-			('create_date', '>=', self.date_from),
-			('create_date', '<=', self.date_to),
-			('is_offline_order', '=', True)
-		]
+    def action_start_sync(self):
+        """Avvia sincronizzazione batch"""
+        self.ensure_one()
+        
+        orders = self._get_orders_to_sync()
+        
+        if not orders:
+            raise UserError(_('Nessun ordine da sincronizzare trovato'))
+        
+        # Cambia stato
+        self.write({
+            'state': 'running',
+            'result_log': f'Avvio sincronizzazione di {len(orders)} ordini...\n'
+        })
+        
+        # Avvia sincronizzazione
+        try:
+            results = self._execute_mass_sync(orders)
+            
+            # Aggiorna risultati
+            self.write({
+                'state': 'done',
+                'orders_synced_count': results['synced_count'],
+                'orders_error_count': results['error_count'],
+                'result_log': self.result_log + '\n' + results['log']
+            })
+            
+            # Mostra risultati
+            return self._show_sync_results(results)
+            
+        except Exception as e:
+            error_msg = f'Errore durante sincronizzazione: {str(e)}'
+            _logger.error(error_msg)
+            
+            self.write({
+                'state': 'error',
+                'result_log': self.result_log + '\n' + error_msg
+            })
+            
+            raise UserError(error_msg)
 
-		if not self.force_sync:
-			domain.append(('sync_status', '!=', 'synced'))
+    def _execute_mass_sync(self, orders):
+        """Esegue sincronizzazione batch"""
+        self.ensure_one()
+        
+        synced_count = 0
+        error_count = 0
+        log_lines = []
+        
+        total_orders = len(orders)
+        log_lines.append(f'=== SINCRONIZZAZIONE BATCH ===')
+        log_lines.append(f'Totale ordini da sincronizzare: {total_orders}')
+        log_lines.append(f'Inizio: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
+        log_lines.append('')
+        
+        for i, order in enumerate(orders, 1):
+            try:
+                log_lines.append(f'[{i}/{total_orders}] Sincronizzazione ordine {order.name}...')
+                
+                # Sincronizza ordine
+                order.sync_to_odoo()
+                
+                # Conferma ordine se richiesto
+                if self.auto_confirm_orders and order.state == 'draft':
+                    order.action_confirm()
+                    log_lines.append(f'  ✓ Ordine confermato')
+                
+                # Sincronizza picking se richiesto
+                if self.sync_pickings and order.picking_ids:
+                    for picking in order.picking_ids:
+                        if not picking.synced_to_odoo:
+                            picking.sync_to_odoo()
+                            log_lines.append(f'  ✓ Picking {picking.name} sincronizzato')
+                        
+                        # Valida picking se richiesto
+                        if self.auto_validate_pickings and picking.state in ['confirmed', 'assigned']:
+                            picking.button_validate()
+                            log_lines.append(f'  ✓ Picking {picking.name} validato')
+                
+                # Sincronizza DDT se richiesto
+                if self.sync_ddts and order.ddt_ids:
+                    for ddt in order.ddt_ids:
+                        if not ddt.synced_to_odoo:
+                            ddt.sync_to_odoo()
+                            log_lines.append(f'  ✓ DDT {ddt.name} sincronizzato')
+                
+                synced_count += 1
+                log_lines.append(f'  ✓ Ordine {order.name} sincronizzato con successo')
+                
+            except Exception as e:
+                error_count += 1
+                error_msg = f'  ✗ Errore ordine {order.name}: {str(e)}'
+                log_lines.append(error_msg)
+                _logger.error(f'Errore sincronizzazione ordine {order.name}: {str(e)}')
+                
+                if not self.ignore_errors:
+                    # Interrompi se non si devono ignorare gli errori
+                    log_lines.append('Sincronizzazione interrotta a causa di errori')
+                    break
+            
+            # Aggiorna log ogni 10 ordini
+            if i % 10 == 0:
+                current_log = '\n'.join(log_lines)
+                self.write({'result_log': self.result_log + current_log + '\n'})
+                log_lines = []
+        
+        # Log finale
+        log_lines.append('')
+        log_lines.append(f'=== RISULTATI FINALI ===')
+        log_lines.append(f'Ordini sincronizzati: {synced_count}/{total_orders}')
+        log_lines.append(f'Errori: {error_count}')
+        log_lines.append(f'Fine: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
+        
+        return {
+            'synced_count': synced_count,
+            'error_count': error_count,
+            'total_count': total_orders,
+            'log': '\n'.join(log_lines)
+        }
 
-		return self.env['sale.order'].search(domain)
+    def _show_sync_results(self, results):
+        """Mostra risultati sincronizzazione"""
+        self.ensure_one()
+        
+        message_type = 'success'
+        if results['error_count'] > 0:
+            message_type = 'warning' if results['synced_count'] > 0 else 'danger'
+        
+        title = _('Sincronizzazione Completata')
+        message = _(
+            'Sincronizzati %(synced)d ordini su %(total)d\n'
+            'Errori: %(errors)d'
+        ) % {
+            'synced': results['synced_count'],
+            'total': results['total_count'],
+            'errors': results['error_count']
+        }
+        
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': title,
+                'message': message,
+                'type': message_type,
+                'sticky': True,
+            }
+        }
 
-	def _get_agent_pickings(self, agent):
-		"""Recupera picking agente nel periodo"""
-		domain = [
-			('user_id', '=', agent.id),
-			('create_date', '>=', self.date_from),
-			('create_date', '<=', self.date_to),
-			('is_offline_picking', '=', True)
-		]
+    def action_export_log(self):
+        """Esporta log risultati"""
+        self.ensure_one()
+        
+        if not self.result_log:
+            raise UserError(_('Nessun log da esportare'))
+        
+        # Crea attachment con log
+        attachment = self.env['ir.attachment'].create({
+            'name': f'sync_log_{datetime.now().strftime("%Y%m%d_%H%M%S")}.txt',
+            'type': 'binary',
+            'datas': base64.b64encode(self.result_log.encode('utf-8')),
+            'res_model': self._name,
+            'res_id': self.id,
+            'mimetype': 'text/plain'
+        })
+        
+        return {
+            'type': 'ir.actions.act_url',
+            'url': f'/web/content/{attachment.id}?download=true',
+            'target': 'new',
+        }
 
-		if not self.force_sync:
-			domain.append(('sync_status', '!=', 'synced'))
-
-		return self.env['stock.picking'].search(domain)
-
-	def _should_sync_order(self, order):
-		"""Verifica se ordine deve essere sincronizzato"""
-		if self.force_sync:
-			return True
-
-		return order.sync_status in ['pending', 'failed']
-
-	def _should_sync_picking(self, picking):
-		"""Verifica se picking deve essere sincronizzato"""
-		if self.force_sync:
-			return True
-
-		return picking.sync_status in ['pending', 'failed']
-
-	def _sync_order(self, order):
-		"""Sincronizza singolo ordine"""
-		try:
-			# Valida ordine
-			if self.validate_documents:
-				order.action_confirm()
-
-			# Aggiorna stato sincronizzazione
-			order.write({
-				'sync_status': 'synced',
-				'sync_date': fields.Datetime.now()
-			})
-
-		except Exception as e:
-			order.write({
-				'sync_status': 'failed',
-				'sync_error': str(e)
-			})
-			raise
-
-	def _sync_picking(self, picking):
-		"""Sincronizza singolo picking"""
-		try:
-			# Valida picking se richiesto
-			if self.validate_documents and picking.state == 'draft':
-				picking.action_confirm()
-
-				# Assegna quantità se disponibili
-				for move in picking.move_lines:
-					if move.product_uom_qty > 0:
-						move.quantity_done = move.product_uom_qty
-
-				# Valida trasferimento
-				picking.button_validate()
-
-			# Aggiorna stato sincronizzazione
-			picking.write({
-				'sync_status': 'synced',
-				'sync_date': fields.Datetime.now()
-			})
-
-		except Exception as e:
-			picking.write({
-				'sync_status': 'failed',
-				'sync_error': str(e)
-			})
-			raise
-
-	def _update_agent_counters(self, agent):
-		"""Aggiorna contatori agente"""
-		try:
-			counters = self.env['raccolta.counter'].search([
-				('user_id', '=', agent.id)
-			])
-
-			for counter in counters:
-				counter._sync_with_sequence()
-
-			return True
-
-		except Exception as e:
-			_logger.error(f"Errore aggiornamento contatori agente {agent.name}: {str(e)}")
-			return False
-
-	def _update_results(self, results):
-		"""Aggiorna risultati wizard"""
-		summary = []
-		summary.append(f"Agenti processati: {results['agents_processed']}")
-		summary.append(f"Ordini sincronizzati: {results['orders_synced']}")
-		summary.append(f"Picking sincronizzati: {results['pickings_synced']}")
-		summary.append(f"Contatori aggiornati: {results['counters_updated']}")
-
-		if results['errors']:
-			summary.append("\nErrori:")
-			for error in results['errors']:
-				summary.append(f"- {error}")
-
-		self.result_summary = '\n'.join(summary)
-
-	def action_view_sync_status(self):
-		"""Mostra stato sincronizzazione"""
-		return {
-			'type': 'ir.actions.act_window',
-			'name': _('Stato Sincronizzazione'),
-			'res_model': 'raccolta.sync.status',
-			'view_mode': 'tree,form',
-			'domain': [
-				('agent_id', 'in', self.agent_ids.ids if self.agent_ids else []),
-				('sync_date', '>=', self.date_from),
-				('sync_date', '<=', self.date_to)
-			],
-			'target': 'current'
-		}
+    @api.model
+    def auto_sync_pending_orders(self):
+        """Metodo per sincronizzazione automatica via cron"""
+        # Trova ordini pendenti più vecchi di 1 ora
+        cutoff_time = datetime.now() - timedelta(hours=1)
+        
+        pending_orders = self.env['sale.order'].search([
+            ('is_offline_order', '=', True),
+            ('synced_to_odoo', '=', False),
+            ('offline_created_at', '<=', cutoff_time)
+        ])
+        
+        if not pending_orders:
+            _logger.info('Nessun ordine pendente da sincronizzare automaticamente')
+            return
+        
+        _logger.info(f'Sincronizzazione automatica di {len(pending_orders)} ordini pendenti')
+        
+        # Crea wizard per sync automatica
+        wizard = self.create({
+            'sync_mode': 'manual_selection',
+            'order_ids': [(6, 0, pending_orders.ids)],
+            'ignore_errors': True,
+            'auto_confirm_orders': True,
+        })
+        
+        # Esegui sincronizzazione
+        wizard.action_start_sync()
+        
+        return True

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+# ✅ Import solo modelli esistenti e verificati
 from . import raccolta_config
 from . import raccolta_session
 from . import raccolta_counter

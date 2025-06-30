@@ -2,6 +2,9 @@
 
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class StockPicking(models.Model):
@@ -59,6 +62,27 @@ class StockPicking(models.Model):
 		help='Indica se il DDT è stato creato per questo picking'
 	)
 
+	# Campi DDT collegati - usando relazione indiretta
+	ddt_ids = fields.One2many(
+		'stock.delivery.note',
+		'picking_id',
+		string='DDT Collegati',
+		help='DDT generati per questo picking'
+	)
+
+	ddt_count = fields.Integer(
+		string='Numero DDT',
+		compute='_compute_ddt_count',
+		help='Numero di DDT collegati'
+	)
+
+	# === COMPUTED FIELDS ===
+	@api.depends('ddt_ids')
+	def _compute_ddt_count(self):
+		"""Calcola numero DDT collegati"""
+		for picking in self:
+			picking.ddt_count = len(picking.ddt_ids)
+
 	# === OVERRIDE METODI ===
 	def button_validate(self):
 		"""Override validazione per creare DDT automatico"""
@@ -85,199 +109,163 @@ class StockPicking(models.Model):
 		user = self.raccolta_session_id.user_id
 
 		# Verifica che il modulo DDT sia installato
-		if 'stock.delivery.note' not in self.env:
+		if not self.env['ir.module.module'].search([
+			('name', '=', 'l10n_it_delivery_note_base'),
+			('state', '=', 'installed')
+		]):
+			_logger.warning("Modulo l10n_it_delivery_note_base non installato - skip DDT automatico")
 			return
 
 		try:
-			# Prepara valori per DDT
-			ddt_vals = self._prepare_ddt_values()
-
-			# Se l'utente ha numerazione personalizzata, genera nome personalizzato
-			if (user.is_raccolta_agent and
-					user.ddt_sequence_id and
-					config.use_agent_numbering):
-				ddt_vals['name'] = user.get_next_ddt_number()
-
+			# Prepara dati DDT
+			ddt_data = self._prepare_ddt_data(config, user)
+			
 			# Crea DDT
-			ddt = self.env['stock.delivery.note'].create(ddt_vals)
+			ddt = self.env['stock.delivery.note'].create(ddt_data)
+			
+			# Marca DDT come creato
+			self.write({
+				'ddt_created': True,
+				'ddt_ids': [(4, ddt.id)]
+			})
 
-			# Collega picking al DDT
-			ddt.write({'picking_ids': [(4, self.id)]})
-
-			# Marca picking come avente DDT
-			self.ddt_created = True
-
-			# Log creazione
-			self.message_post(
-				body=_('DDT automatico creato: %s') % ddt.name,
-				message_type='notification'
-			)
+			_logger.info(f"DDT automatico creato: {ddt.name} per picking {self.name}")
 
 		except Exception as e:
-			# Log errore ma non bloccare il processo
-			self.message_post(
-				body=_('Errore creazione DDT automatico: %s') % str(e),
-				message_type='notification'
-			)
+			_logger.error(f"Errore creazione DDT automatico per picking {self.name}: {str(e)}")
+			# Non bloccare il flusso, solo log dell'errore
 
-	def _prepare_ddt_values(self):
-		"""Prepara valori per creazione DDT"""
-		config = self.raccolta_session_id.config_id
-
-		# Determina partner mittente e destinatario
-		partners = self._get_ddt_partners()
-
-		return {
-			'company_id': self.company_id.id,
-			'partner_sender_id': partners['sender'].id,
-			'partner_id': partners['recipient'].id,
-			'partner_shipping_id': partners['shipping'].id,
-			'type_id': config.ddt_type_id.id if config.ddt_type_id else False,
-			'date': self.date_done or fields.Datetime.now(),
-			'transport_reason_id': (
-				config.ddt_transport_reason_id.id if config.ddt_transport_reason_id
-				else self._get_default_transport_reason()
-			),
-			'goods_appearance_id': (
-				config.ddt_goods_appearance_id.id if config.ddt_goods_appearance_id
-				else self._get_default_goods_appearance()
-			),
-			'transport_condition_id': (
-				config.ddt_transport_condition_id.id if config.ddt_transport_condition_id
-				else self._get_default_transport_condition()
-			),
-			'transport_method_id': self._get_default_transport_method(),
-			'carrier_id': self.carrier_id.partner_id.id if self.carrier_id else False,
-			'delivery_method_id': self.carrier_id.id if self.carrier_id else False,
-		}
-
-	def _get_ddt_partners(self):
-		"""Determina partner per DDT"""
-		# Partner mittente (di solito l'azienda)
-		sender = self.company_id.partner_id
-
-		# Partner destinatario (cliente dell'ordine)
-		recipient = self.partner_id
-		if self.sale_id and self.sale_id.partner_id:
-			recipient = self.sale_id.partner_id
-
-		# Partner spedizione (indirizzo di consegna)
-		shipping = recipient
-		if self.sale_id and self.sale_id.partner_shipping_id:
-			shipping = self.sale_id.partner_shipping_id
-
-		return {
-			'sender': sender,
-			'recipient': recipient,
-			'shipping': shipping
-		}
-
-	def _get_default_transport_reason(self):
-		"""Ottiene causale trasporto di default"""
-		reason = self.env['stock.picking.transport.reason'].search([
-			('code', '=', 'sale')
-		], limit=1)
-
-		if not reason:
-			reason = self.env['stock.picking.transport.reason'].search([], limit=1)
-
-		return reason.id if reason else False
-
-	def _get_default_goods_appearance(self):
-		"""Ottiene aspetto merci di default"""
-		appearance = self.env['stock.picking.goods.appearance'].search([
-			('code', '=', 'package')
-		], limit=1)
-
-		if not appearance:
-			appearance = self.env['stock.picking.goods.appearance'].search([], limit=1)
-
-		return appearance.id if appearance else False
-
-	def _get_default_transport_condition(self):
-		"""Ottiene condizione trasporto di default"""
-		condition = self.env['stock.picking.transport.condition'].search([
-			('code', '=', 'assigned')
-		], limit=1)
-
-		if not condition:
-			condition = self.env['stock.picking.transport.condition'].search([], limit=1)
-
-		return condition.id if condition else False
-
-	def _get_default_transport_method(self):
-		"""Ottiene metodo trasporto di default"""
-		method = self.env['stock.picking.transport.method'].search([
-			('code', '=', 'recipient')
-		], limit=1)
-
-		if not method:
-			method = self.env['stock.picking.transport.method'].search([], limit=1)
-
-		return method.id if method else False
-
-	def mark_as_synced(self):
-		"""Marca picking come sincronizzato"""
+	def _prepare_ddt_data(self, config, user):
+		"""Prepara dati per creazione DDT"""
 		self.ensure_one()
 
-		self.write({
+		# Dati base DDT
+		ddt_data = {
+			'partner_sender_id': self.company_id.partner_id.id,
+			'partner_id': self.partner_id.id,
+			'picking_ids': [(4, self.id)],
+			'date': fields.Date.today(),
+			'type_id': config.ddt_type_id.id if config.ddt_type_id else False,
+		}
+
+		# Configurazioni trasporto da config se disponibili
+		if config.ddt_transport_reason_id:
+			ddt_data['transport_reason_id'] = config.ddt_transport_reason_id.id
+
+		if config.ddt_goods_appearance_id:
+			ddt_data['goods_appearance_id'] = config.ddt_goods_appearance_id.id
+
+		if config.ddt_transport_condition_id:
+			ddt_data['transport_condition_id'] = config.ddt_transport_condition_id.id
+
+		# Dati agente
+		ddt_data.update({
+			'note': f'DDT generato automaticamente da sessione raccolta {self.raccolta_session_id.name}',
+			'agent_code': user.agent_code,
+		})
+
+		return ddt_data
+
+	# === BUSINESS METHODS ===
+	@api.model
+	def create_offline_picking(self, picking_data):
+		"""Crea picking da dati offline"""
+		validated_data = self._validate_offline_picking_data(picking_data)
+		
+		picking = self.create(validated_data)
+		
+		# Marca come sincronizzato
+		picking.write({
 			'synced_to_odoo': True,
 			'sync_at': fields.Datetime.now()
 		})
+		
+		return picking
 
-	def create_offline_copy(self):
-		"""Crea copia del picking per uso offline"""
-		self.ensure_one()
+	def _validate_offline_picking_data(self, data):
+		"""Valida e converte dati picking offline"""
+		if 'partner_id' not in data:
+			raise UserError(_('Cliente mancante nei dati picking offline'))
 
-		offline_data = {
-			'id': f'offline_picking_{self.id}_{fields.Datetime.now().timestamp()}',
-			'name': self.name,
-			'partner_id': self.partner_id.id,
-			'sale_id': self.sale_id.id if self.sale_id else False,
-			'location_id': self.location_id.id,
-			'location_dest_id': self.location_dest_id.id,
-			'picking_type_id': self.picking_type_id.id,
-			'state': self.state,
-			'scheduled_date': self.scheduled_date.isoformat() if self.scheduled_date else None,
-			'date_done': self.date_done.isoformat() if self.date_done else None,
-			'auto_create_ddt': self.auto_create_ddt,
-			'move_lines': [
-				{
-					'product_id': move.product_id.id,
-					'name': move.name,
-					'product_uom_qty': move.product_uom_qty,
-					'product_uom': move.product_uom.id,
-					'location_id': move.location_id.id,
-					'location_dest_id': move.location_dest_id.id,
-				}
-				for move in self.move_lines
-			],
+		if 'location_id' not in data:
+			raise UserError(_('Ubicazione origine mancante'))
+
+		if 'location_dest_id' not in data:
+			raise UserError(_('Ubicazione destinazione mancante'))
+
+		# Prepara move lines
+		move_lines = []
+		for move_data in data.get('move_lines', []):
+			move_lines.append((0, 0, {
+				'product_id': move_data['product_id'],
+				'product_uom_qty': move_data['quantity'],
+				'product_uom': move_data.get('product_uom', False),
+				'name': move_data.get('name', ''),
+				'location_id': data['location_id'],
+				'location_dest_id': data['location_dest_id'],
+			}))
+
+		return {
+			'partner_id': data['partner_id'],
+			'location_id': data['location_id'],
+			'location_dest_id': data['location_dest_id'],
+			'picking_type_id': data.get('picking_type_id'),
+			'move_lines': move_lines,
 			'is_offline_picking': True,
-			'synced_to_odoo': True,
-			'original_picking_id': self.id,
+			'offline_created_at': data.get('created_at'),
+			'auto_create_ddt': data.get('auto_create_ddt', False),
 		}
 
-		return offline_data
-
-	def action_view_ddt(self):
-		"""Visualizza DDT collegati al picking"""
+	def sync_to_odoo(self):
+		"""Sincronizza picking offline con Odoo"""
 		self.ensure_one()
 
-		# Cerca DDT collegati
-		ddts = self.env['stock.delivery.note'].search([
-			('picking_ids', 'in', self.id)
-		])
+		if self.synced_to_odoo:
+			return True
 
-		if not ddts:
-			raise UserError(_('Nessun DDT trovato per questo picking'))
+		try:
+			# Aggiorna stato
+			self.write({
+				'synced_to_odoo': True,
+				'sync_at': fields.Datetime.now()
+			})
 
-		action = self.env.ref('l10n_it_delivery_note.action_delivery_note_out').read()[0]
+			return True
+		except Exception as e:
+			raise UserError(_('Errore durante la sincronizzazione picking: %s') % str(e))
 
-		if len(ddts) > 1:
-			action['domain'] = [('id', 'in', ddts.ids)]
-		elif len(ddts) == 1:
-			action['views'] = [(self.env.ref('l10n_it_delivery_note.view_delivery_note_form').id, 'form')]
-			action['res_id'] = ddts.id
+	def action_view_ddt(self):
+		"""Visualizza DDT collegati"""
+		self.ensure_one()
+
+		if not self.ddt_ids:
+			return {
+				'type': 'ir.actions.client',
+				'tag': 'display_notification',
+				'params': {
+					'title': _('Nessun DDT'),
+					'message': _('Nessun DDT trovato per questo picking'),
+					'type': 'info',
+				}
+			}
+
+		# Cerca action DDT appropriata
+		try:
+			action = self.env.ref('l10n_it_delivery_note_base.action_stock_delivery_note_out').read()[0]
+		except:
+			# Fallback se ref non trovata
+			action = {
+				'type': 'ir.actions.act_window',
+				'name': _('DDT'),
+				'res_model': 'stock.delivery.note',
+				'view_mode': 'tree,form',
+			}
+
+		if len(self.ddt_ids) > 1:
+			action['domain'] = [('id', 'in', self.ddt_ids.ids)]
+		else:
+			action['views'] = [(False, 'form')]
+			action['res_id'] = self.ddt_ids.id
 
 		return action
 
@@ -289,8 +277,24 @@ class StockPicking(models.Model):
 			raise UserError(_('DDT già creato per questo picking'))
 
 		if self.state != 'done':
-			raise UserError(_('Il picking deve essere validato per creare il DDT'))
+			raise UserError(_('Il picking deve essere validato prima di creare il DDT'))
 
+		# Cerca configurazione
+		config = None
+		if self.raccolta_session_id:
+			config = self.raccolta_session_id.config_id
+		else:
+			# Usa configurazione default
+			config = self.env['raccolta.config'].search([
+				('company_id', '=', self.company_id.id),
+				('active', '=', True)
+			], limit=1)
+
+		if not config:
+			raise UserError(_('Nessuna configurazione raccolta ordini trovata'))
+
+		# Forza creazione DDT
+		self.auto_create_ddt = True
 		self._create_automatic_ddt()
 
 		return {
@@ -298,7 +302,36 @@ class StockPicking(models.Model):
 			'tag': 'display_notification',
 			'params': {
 				'title': _('DDT Creato'),
-				'message': _('DDT creato con successo per il picking %s') % self.name,
+				'message': _('DDT creato con successo'),
 				'type': 'success',
 			}
+		}
+
+	def get_picking_data_for_receipt(self):
+		"""Ottiene dati picking per ricevuta"""
+		self.ensure_one()
+		
+		return {
+			'name': self.name,
+			'id': self.id,
+			'state': self.state,
+			'scheduled_date': self.scheduled_date,
+			'date_done': self.date_done,
+			'partner': {
+				'name': self.partner_id.name,
+				'street': self.partner_id.street or '',
+				'city': self.partner_id.city or '',
+				'zip': self.partner_id.zip or '',
+			},
+			'move_lines': [
+				{
+					'product_name': move.product_id.name,
+					'product_code': move.product_id.default_code or '',
+					'quantity_done': move.quantity_done,
+					'product_uom': move.product_uom.name,
+				}
+				for move in self.move_lines
+			],
+			'agent_code': self.agent_code or '',
+			'ddt_count': self.ddt_count,
 		}

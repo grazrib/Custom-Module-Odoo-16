@@ -1,0 +1,342 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ================================= -->
+        <!-- REPORT RICEVUTA 48MM              -->
+        <!-- ================================= -->
+
+        <record id="action_report_receipt_48mm" model="ir.actions.report">
+            <field name="name">Ricevuta 48mm</field>
+            <field name="model">sale.order</field>
+            <field name="report_type">qweb-html</field>
+            <field name="report_name">raccolta_ordini.receipt_48mm_template</field>
+            <field name="report_file">raccolta_ordini.receipt_48mm_template</field>
+            <field name="print_report_name">'Ricevuta_48mm_%s' % (object.name)</field>
+            <field name="binding_model_id" ref="sale.model_sale_order"/>
+            <field name="binding_type">report</field>
+            <field name="paperformat_id" ref="paperformat_receipt_48mm"/>
+        </record>
+
+        <!-- ================================= -->
+        <!-- REPORT RICEVUTA 80MM              -->
+        <!-- ================================= -->
+
+        <record id="action_report_receipt_80mm" model="ir.actions.report">
+            <field name="name">Ricevuta 80mm</field>
+            <field name="model">sale.order</field>
+            <field name="report_type">qweb-html</field>
+            <field name="report_name">raccolta_ordini.receipt_80mm_template</field>
+            <field name="report_file">raccolta_ordini.receipt_80mm_template</field>
+            <field name="print_report_name">'Ricevuta_80mm_%s' % (object.name)</field>
+            <field name="binding_model_id" ref="sale.model_sale_order"/>
+            <field name="binding_type">report</field>
+            <field name="paperformat_id" ref="paperformat_receipt_80mm"/>
+        </record>
+
+        <!-- ================================= -->
+        <!-- FORMATI CARTA TERMICI              -->
+        <!-- ================================= -->
+
+        <!-- Formato carta 48mm -->
+        <record id="paperformat_receipt_48mm" model="report.paperformat">
+            <field name="name">Ricevuta Termica 48mm</field>
+            <field name="default" eval="False"/>
+            <field name="format">custom</field>
+            <field name="page_height">200</field>
+            <field name="page_width">48</field>
+            <field name="orientation">Portrait</field>
+            <field name="margin_top">2</field>
+            <field name="margin_bottom">2</field>
+            <field name="margin_left">2</field>
+            <field name="margin_right">2</field>
+            <field name="header_line" eval="False"/>
+            <field name="header_spacing">0</field>
+            <field name="dpi">203</field>
+        </record>
+
+        <!-- Formato carta 80mm -->
+        <record id="paperformat_receipt_80mm" model="report.paperformat">
+            <field name="name">Ricevuta Termica 80mm</field>
+            <field name="default" eval="False"/>
+            <field name="format">custom</field>
+            <field name="page_height">200</field>
+            <field name="page_width">80</field>
+            <field name="orientation">Portrait</field>
+            <field name="margin_top">3</field>
+            <field name="margin_bottom">3</field>
+            <field name="margin_left">3</field>
+            <field name="margin_right">3</field>
+            <field name="header_line" eval="False"/>
+            <field name="header_spacing">0</field>
+            <field name="dpi">203</field>
+        </record>
+
+        <!-- ================================= -->
+        <!-- TEMPLATE RICEVUTA 48MM            -->
+        <!-- ================================= -->
+
+        <template id="receipt_48mm_template">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="order">
+                    <div class="page receipt-48mm">
+                        <style>
+                            .receipt-48mm {
+                                font-family: 'Courier New', monospace;
+                                font-size: 9px;
+                                line-height: 1.2;
+                                width: 48mm;
+                                margin: 0;
+                                padding: 2mm;
+                            }
+                            .receipt-48mm .center { text-align: center; }
+                            .receipt-48mm .right { text-align: right; }
+                            .receipt-48mm .bold { font-weight: bold; }
+                            .receipt-48mm .separator { border-bottom: 1px dashed #000; margin: 2px 0; }
+                            .receipt-48mm .double-separator { border-bottom: 2px solid #000; margin: 3px 0; }
+                            .receipt-48mm .small { font-size: 8px; }
+                            .receipt-48mm .product-line { margin: 1px 0; }
+                        </style>
+
+                        <!-- Header Azienda -->
+                        <div class="center bold">
+                            <div class="double-separator"></div>
+                            <div><t t-esc="order.company_id.name"/></div>
+                            <div t-if="order.company_id.street" class="small">
+                                <t t-esc="order.company_id.street"/>
+                            </div>
+                            <div t-if="order.company_id.city" class="small">
+                                <t t-esc="order.company_id.zip"/> <t t-esc="order.company_id.city"/>
+                            </div>
+                            <div t-if="order.company_id.vat" class="small">
+                                P.IVA: <t t-esc="order.company_id.vat"/>
+                            </div>
+                            <div class="double-separator"></div>
+                        </div>
+
+                        <!-- Info Ordine -->
+                        <div>
+                            <br/>
+                            <div class="bold">ORDINE: <t t-esc="order.name"/></div>
+                            <div>DATA: <t t-esc="format_date(order.date_order)"/></div>
+                            <div t-if="order.agent_code">AGENTE: <t t-esc="order.agent_code"/></div>
+                            <div class="separator"></div>
+                        </div>
+
+                        <!-- Cliente -->
+                        <div>
+                            <div class="bold">CLIENTE:</div>
+                            <div><t t-esc="format_48mm(order.partner_id.name, 30)"/></div>
+                            <div t-if="order.partner_id.street" class="small">
+                                <t t-esc="format_48mm(order.partner_id.street, 30)"/>
+                            </div>
+                            <div t-if="order.partner_id.city" class="small">
+                                <t t-esc="order.partner_id.zip"/> <t t-esc="order.partner_id.city"/>
+                            </div>
+                            <div class="separator"></div>
+                        </div>
+
+                        <!-- Prodotti -->
+                        <div>
+                            <div class="bold">PRODOTTI:</div>
+                            <t t-foreach="order.order_line" t-as="line">
+                                <div class="product-line">
+                                    <div><t t-esc="format_48mm(line.product_id.name, 30)"/></div>
+                                    <div class="small">
+                                        <t t-esc="'%.0f' % line.product_uom_qty"/> x 
+                                        <t t-esc="'%.2f' % line.price_unit"/> = 
+                                        <span class="right"><t t-esc="'%.2f' % line.price_subtotal"/></span>
+                                    </div>
+                                </div>
+                            </t>
+                            <div class="separator"></div>
+                        </div>
+
+                        <!-- Totali -->
+                        <div>
+                            <div>SUBTOTALE: <span class="right"><t t-esc="'%.2f' % order.amount_untaxed"/></span></div>
+                            <div>IVA: <span class="right"><t t-esc="'%.2f' % order.amount_tax"/></span></div>
+                            <div class="double-separator"></div>
+                            <div class="bold">TOTALE: <span class="right"><t t-esc="'%.2f' % order.amount_total"/></span></div>
+                            <div class="double-separator"></div>
+                        </div>
+
+                        <!-- Note -->
+                        <div t-if="order.general_notes">
+                            <br/>
+                            <div class="bold">NOTE:</div>
+                            <div class="small">
+                                <t t-foreach="wrap_text(order.general_notes, 32)" t-as="note_line">
+                                    <div><t t-esc="note_line"/></div>
+                                </t>
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="center small">
+                            <br/>
+                            <div>Grazie per aver scelto</div>
+                            <div class="bold"><t t-esc="order.company_id.name"/></div>
+                            <br/>
+                            <div>Stampato: <t t-esc="format_date(datetime.datetime.now())"/></div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </template>
+
+        <!-- ================================= -->
+        <!-- TEMPLATE RICEVUTA 80MM            -->
+        <!-- ================================= -->
+
+        <template id="receipt_80mm_template">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="order">
+                    <div class="page receipt-80mm">
+                        <style>
+                            .receipt-80mm {
+                                font-family: 'Courier New', monospace;
+                                font-size: 10px;
+                                line-height: 1.3;
+                                width: 80mm;
+                                margin: 0;
+                                padding: 3mm;
+                            }
+                            .receipt-80mm .center { text-align: center; }
+                            .receipt-80mm .right { text-align: right; }
+                            .receipt-80mm .bold { font-weight: bold; }
+                            .receipt-80mm .separator { border-bottom: 1px dashed #000; margin: 3px 0; }
+                            .receipt-80mm .double-separator { border-bottom: 2px solid #000; margin: 4px 0; }
+                            .receipt-80mm .small { font-size: 9px; }
+                            .receipt-80mm .product-header {
+                                display: table;
+                                width: 100%;
+                                font-weight: bold;
+                            }
+                            .receipt-80mm .product-line {
+                                display: table;
+                                width: 100%;
+                                margin: 1px 0;
+                            }
+                            .receipt-80mm .col-desc { display: table-cell; width: 50%; }
+                            .receipt-80mm .col-qty { display: table-cell; width: 15%; text-align: right; }
+                            .receipt-80mm .col-price { display: table-cell; width: 17%; text-align: right; }
+                            .receipt-80mm .col-total { display: table-cell; width: 18%; text-align: right; }
+                        </style>
+
+                        <!-- Header Azienda -->
+                        <div class="center bold">
+                            <div class="double-separator"></div>
+                            <div style="font-size: 12px;"><t t-esc="order.company_id.name"/></div>
+                            <div t-if="order.company_id.street" class="small">
+                                <t t-esc="order.company_id.street"/>
+                            </div>
+                            <div t-if="order.company_id.city" class="small">
+                                <t t-esc="order.company_id.zip"/> <t t-esc="order.company_id.city"/>
+                            </div>
+                            <div t-if="order.company_id.vat" class="small">
+                                P.IVA: <t t-esc="order.company_id.vat"/>
+                            </div>
+                            <div t-if="order.company_id.phone" class="small">
+                                Tel: <t t-esc="order.company_id.phone"/>
+                            </div>
+                            <div class="double-separator"></div>
+                        </div>
+
+                        <!-- Info Ordine -->
+                        <div>
+                            <br/>
+                            <div class="bold">ORDINE: <t t-esc="order.name"/></div>
+                            <div>DATA: <t t-esc="format_date(order.date_order)"/></div>
+                            <div t-if="order.agent_code">AGENTE: <t t-esc="order.agent_code"/></div>
+                            <div class="separator"></div>
+                        </div>
+
+                        <!-- Cliente -->
+                        <div>
+                            <div class="bold">CLIENTE:</div>
+                            <div><t t-esc="format_80mm(order.partner_id.name, 45)"/></div>
+                            <div t-if="order.partner_id.street" class="small">
+                                <t t-esc="format_80mm(order.partner_id.street, 45)"/>
+                            </div>
+                            <div t-if="order.partner_id.city" class="small">
+                                <t t-esc="order.partner_id.zip"/> <t t-esc="order.partner_id.city"/>
+                            </div>
+                            <div t-if="order.partner_id.vat" class="small">
+                                P.IVA: <t t-esc="order.partner_id.vat"/>
+                            </div>
+                            <div class="separator"></div>
+                        </div>
+
+                        <!-- Header Prodotti -->
+                        <div>
+                            <div class="bold">PRODOTTI:</div>
+                            <div class="product-header">
+                                <div class="col-desc">Descrizione</div>
+                                <div class="col-qty">Q.ta</div>
+                                <div class="col-price">Prezzo</div>
+                                <div class="col-total">Totale</div>
+                            </div>
+                            <div class="separator"></div>
+                        </div>
+
+                        <!-- Prodotti -->
+                        <div>
+                            <t t-foreach="order.order_line" t-as="line">
+                                <div class="product-line">
+                                    <div class="col-desc"><t t-esc="format_80mm(line.product_id.name, 25)"/></div>
+                                    <div class="col-qty"><t t-esc="'%.0f' % line.product_uom_qty"/></div>
+                                    <div class="col-price"><t t-esc="'%.2f' % line.price_unit"/></div>
+                                    <div class="col-total"><t t-esc="'%.2f' % line.price_subtotal"/></div>
+                                </div>
+                            </t>
+                            <div class="separator"></div>
+                        </div>
+
+                        <!-- Totali -->
+                        <div>
+                            <div>SUBTOTALE: <span class="right bold"><t t-esc="'%.2f' % order.amount_untaxed"/></span></div>
+                            <div>IVA: <span class="right bold"><t t-esc="'%.2f' % order.amount_tax"/></span></div>
+                            <div class="double-separator"></div>
+                            <div class="bold" style="font-size: 11px;">
+                                TOTALE: <span class="right"><t t-esc="'%.2f' % order.amount_total"/> <t t-esc="order.currency_id.name"/></span>
+                            </div>
+                            <div class="double-separator"></div>
+                        </div>
+
+                        <!-- DDT collegati -->
+                        <div t-if="order.ddt_ids">
+                            <br/>
+                            <div class="bold">DDT COLLEGATI:</div>
+                            <t t-foreach="order.ddt_ids" t-as="ddt">
+                                <div class="small">• <t t-esc="ddt.name"/> - <t t-esc="ddt.date.strftime('%d/%m/%Y')"/></div>
+                            </t>
+                        </div>
+
+                        <!-- Note -->
+                        <div t-if="order.general_notes">
+                            <br/>
+                            <div class="bold">NOTE:</div>
+                            <div class="small">
+                                <t t-foreach="wrap_text(order.general_notes, 48)" t-as="note_line">
+                                    <div><t t-esc="note_line"/></div>
+                                </t>
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="center small">
+                            <br/>
+                            <div>Grazie per aver scelto</div>
+                            <div class="bold"><t t-esc="order.company_id.name"/></div>
+                            <div t-if="order.company_id.website"><t t-esc="order.company_id.website"/></div>
+                            <br/>
+                            <div>Stampato: <t t-esc="format_date(datetime.datetime.now())"/></div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </template>
+
+    </data>
+</odoo>

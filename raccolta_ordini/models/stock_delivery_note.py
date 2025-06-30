@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from odoo import models, fields, api, _
+from odoo.exceptions import UserError
 
 
 class StockDeliveryNote(models.Model):
@@ -8,18 +9,8 @@ class StockDeliveryNote(models.Model):
 	_inherit = 'stock.delivery.note'
 
 	# === CAMPI RACCOLTA ORDINI ===
-	raccolta_session_id = fields.Many2one(
-		'raccolta.session',
-		string='Sessione Raccolta',
-		compute='_compute_raccolta_session',
-		store=True,
-		help='Sessione di raccolta dell\'ordine collegato'
-	)
-
 	agent_code = fields.Char(
 		string='Codice Agente',
-		related='raccolta_session_id.user_id.agent_code',
-		store=True,
 		help='Codice dell\'agente che ha creato il DDT'
 	)
 
@@ -45,77 +36,109 @@ class StockDeliveryNote(models.Model):
 		help='Data e ora di sincronizzazione'
 	)
 
-	# === COMPUTED FIELDS ===
-	@api.depends('picking_ids', 'picking_ids.sale_id', 'picking_ids.sale_id.raccolta_session_id')
-	def _compute_raccolta_session(self):
-		for ddt in self:
-			session = False
-			if ddt.picking_ids:
-				# Prende la sessione dal primo picking che ne ha una
-				for picking in ddt.picking_ids:
-					if picking.sale_id and picking.sale_id.raccolta_session_id:
-						session = picking.sale_id.raccolta_session_id
-						break
-			ddt.raccolta_session_id = session
+	raccolta_session_id = fields.Many2one(
+		'raccolta.session',
+		string='Sessione Raccolta',
+		help='Sessione di raccolta che ha generato questo DDT'
+	)
+
+	# === CAMPI AGGIUNTIVI ===
+	general_notes = fields.Text(
+		string='Note Generali',
+		help='Note generali per il DDT'
+	)
+
+	internal_notes = fields.Text(
+		string='Note Interne',
+		help='Note interne non visibili al cliente'
+	)
+
+	signature_data = fields.Text(
+		string='Dati Firma',
+		help='Dati della firma digitale del cliente in formato base64'
+	)
 
 	# === BUSINESS METHODS ===
-	def mark_as_synced(self):
-		"""Marca DDT come sincronizzato"""
-		self.ensure_one()
-
-		self.write({
+	@api.model
+	def create_offline_ddt(self, ddt_data):
+		"""Crea DDT da dati offline"""
+		validated_data = self._validate_offline_ddt_data(ddt_data)
+		
+		ddt = self.create(validated_data)
+		
+		# Marca come sincronizzato
+		ddt.write({
 			'synced_to_odoo': True,
 			'sync_at': fields.Datetime.now()
 		})
+		
+		return ddt
 
-	def create_offline_copy(self):
-		"""Crea copia del DDT per uso offline"""
-		self.ensure_one()
+	def _validate_offline_ddt_data(self, data):
+		"""Valida e converte dati DDT offline"""
+		if 'partner_id' not in data:
+			raise UserError(_('Cliente mancante nei dati DDT offline'))
 
-		offline_data = {
-			'id': f'offline_ddt_{self.id}_{fields.Datetime.now().timestamp()}',
-			'name': self.name,
-			'partner_id': self.partner_id.id,
-			'partner_shipping_id': self.partner_shipping_id.id,
-			'partner_sender_id': self.partner_sender_id.id,
-			'type_id': self.type_id.id,
-			'date': self.date.isoformat() if self.date else None,
-			'transport_reason_id': self.transport_reason_id.id if self.transport_reason_id else False,
-			'goods_appearance_id': self.goods_appearance_id.id if self.goods_appearance_id else False,
-			'transport_condition_id': self.transport_condition_id.id if self.transport_condition_id else False,
-			'transport_method_id': self.transport_method_id.id if self.transport_method_id else False,
-			'carrier_id': self.carrier_id.id if self.carrier_id else False,
-			'delivery_method_id': self.delivery_method_id.id if self.delivery_method_id else False,
-			'packages': self.packages,
-			'gross_weight': self.gross_weight,
-			'net_weight': self.net_weight,
-			'volume': self.volume,
-			'state': self.state,
-			'picking_ids': [p.id for p in self.picking_ids],
-			'is_offline_ddt': True,
-			'synced_to_odoo': True,
-			'original_ddt_id': self.id,
-		}
-
-		return offline_data
-
-	def get_receipt_data(self):
-		"""Ottiene dati DDT per ricevute"""
-		self.ensure_one()
+		if 'partner_sender_id' not in data:
+			raise UserError(_('Mittente mancante nei dati DDT offline'))
 
 		return {
-			'id': self.id,
+			'partner_id': data['partner_id'],
+			'partner_sender_id': data['partner_sender_id'],
+			'date': data.get('date', fields.Date.today()),
+			'is_offline_ddt': True,
+			'offline_created_at': data.get('created_at'),
+			'agent_code': data.get('agent_code', ''),
+			'general_notes': data.get('general_notes', ''),
+			'internal_notes': data.get('internal_notes', ''),
+			'signature_data': data.get('signature_data', ''),
+		}
+
+	def sync_to_odoo(self):
+		"""Sincronizza DDT offline con Odoo"""
+		self.ensure_one()
+
+		if self.synced_to_odoo:
+			return True
+
+		try:
+			# Aggiorna stato
+			self.write({
+				'synced_to_odoo': True,
+				'sync_at': fields.Datetime.now()
+			})
+
+			return True
+		except Exception as e:
+			raise UserError(_('Errore durante la sincronizzazione DDT: %s') % str(e))
+
+	def get_ddt_data_for_receipt(self):
+		"""Ottiene dati DDT per ricevuta"""
+		self.ensure_one()
+		
+		return {
 			'name': self.name,
-			'date': self.date.strftime('%d/%m/%Y') if self.date else '',
+			'id': self.id,
+			'date': self.date,
 			'state': self.state,
-			'transport_reason': self.transport_reason_id.name if self.transport_reason_id else 'Vendita',
-			'goods_appearance': self.goods_appearance_id.name if self.goods_appearance_id else 'Colli N.1',
-			'transport_condition': self.transport_condition_id.name if self.transport_condition_id else 'Porto Assegnato',
-			'transport_method': self.transport_method_id.name if self.transport_method_id else 'Destinatario',
-			'carrier_name': self.carrier_id.name if self.carrier_id else '',
-			'packages': str(self.packages or 1),
-			'gross_weight': str(self.gross_weight or ''),
-			'net_weight': str(self.net_weight or ''),
+			'partner': {
+				'name': self.partner_id.name,
+				'street': self.partner_id.street or '',
+				'city': self.partner_id.city or '',
+				'zip': self.partner_id.zip or '',
+				'vat': self.partner_id.vat or '',
+			},
+			'sender': {
+				'name': self.partner_sender_id.name,
+				'street': self.partner_sender_id.street or '',
+				'city': self.partner_sender_id.city or '',
+				'zip': self.partner_sender_id.zip or '',
+				'vat': self.partner_sender_id.vat or '',
+			},
+			'transport_reason': self.transport_reason_id.name if self.transport_reason_id else '',
+			'goods_appearance': self.goods_appearance_id.name if self.goods_appearance_id else '',
+			'agent_code': self.agent_code or '',
+			'general_notes': self.general_notes or '',
 			'volume': str(self.volume or ''),
 			'synced': self.synced_to_odoo,
 		}

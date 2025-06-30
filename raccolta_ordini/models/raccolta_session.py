@@ -94,147 +94,97 @@ class RaccoltaSession(models.Model):
 	synced_order_count = fields.Integer(
 		string='Ordini Sincronizzati',
 		compute='_compute_order_stats',
-		help='Numero di ordini già sincronizzati'
+		help='Numero di ordini sincronizzati'
 	)
 
 	pending_order_count = fields.Integer(
-		string='Ordini da Sincronizzare',
+		string='Ordini Pendenti',
 		compute='_compute_order_stats',
-		help='Numero di ordini in attesa di sincronizzazione'
+		help='Numero di ordini non ancora sincronizzati'
 	)
 
-	# === CONTATORI DOCUMENTI ===
-	picking_count = fields.Integer(
-		string='Numero Picking',
-		compute='_compute_document_stats',
-		help='Numero di picking generati'
+	# === TOTALI VENDITE ===
+	total_amount = fields.Monetary(
+		string='Totale Vendite',
+		compute='_compute_order_stats',
+		currency_field='currency_id',
+		help='Totale delle vendite in questa sessione'
 	)
 
-	ddt_count = fields.Integer(
-		string='Numero DDT',
-		compute='_compute_document_stats',
-		help='Numero di DDT generati'
+	currency_id = fields.Many2one(
+		string='Valuta',
+		related='company_id.currency_id',
+		readonly=True
 	)
 
-	# === INFORMAZIONI OFFLINE ===
-	offline_mode = fields.Boolean(
-		string='Modalità Offline',
-		default=False,
-		help='Indica se la sessione è stata utilizzata offline'
+	# === STATO CONNESSIONE ===
+	is_online = fields.Boolean(
+		string='Online',
+		default=True,
+		help='Indica se la sessione è attualmente online'
 	)
 
 	last_online = fields.Datetime(
 		string='Ultima Connessione',
-		help='Ultima volta che la sessione era online'
+		default=fields.Datetime.now,
+		help='Ultima volta che la sessione è stata online'
 	)
 
-	offline_duration = fields.Float(
-		string='Tempo Offline (ore)',
-		compute='_compute_offline_duration',
-		help='Tempo totale trascorso offline'
-	)
-
-	# === SINCRONIZZAZIONE ===
-	last_sync_at = fields.Datetime(
-		string='Ultima Sincronizzazione',
-		help='Data e ora dell\'ultima sincronizzazione'
-	)
-
-	sync_count = fields.Integer(
-		string='Numero Sincronizzazioni',
-		default=0,
-		help='Numero totale di sincronizzazioni effettuate'
-	)
-
-	sync_error_count = fields.Integer(
-		string='Errori Sincronizzazione',
-		default=0,
-		help='Numero di errori durante la sincronizzazione'
-	)
-
-	last_sync_error = fields.Text(
-		string='Ultimo Errore Sync',
-		help='Descrizione dell\'ultimo errore di sincronizzazione'
-	)
-
-	# === NOTE E DETTAGLI ===
-	notes = fields.Text(
-		string='Note Sessione',
-		help='Note e commenti sulla sessione'
-	)
-
-	rescue = fields.Boolean(
-		string='Sessione di Recupero',
-		default=False,
-		help='Sessione creata per recuperare dati perduti'
-	)
+	sync_status = fields.Selection([
+		('synced', 'Sincronizzato'),
+		('pending', 'In Attesa'),
+		('error', 'Errore'),
+	], string='Stato Sincronizzazione',
+	   compute='_compute_sync_status',
+	   help='Stato di sincronizzazione della sessione')
 
 	# === COMPUTED FIELDS ===
 	@api.depends('name', 'user_id.name', 'start_at')
 	def _compute_display_name(self):
+		"""Calcola nome di visualizzazione"""
 		for session in self:
-			start_str = session.start_at.strftime('%d/%m/%Y %H:%M') if session.start_at else ''
-			session.display_name = f"{session.name} - {session.user_id.name} ({start_str})"
+			if session.start_at:
+				date_str = session.start_at.strftime('%d/%m/%Y %H:%M')
+				session.display_name = f"{session.user_id.name} - {date_str}"
+			else:
+				session.display_name = f"{session.user_id.name} - {session.name}"
 
 	@api.depends('start_at', 'stop_at')
 	def _compute_duration(self):
+		"""Calcola durata della sessione"""
 		for session in self:
 			if session.start_at:
 				end_time = session.stop_at or fields.Datetime.now()
-				delta = end_time - session.start_at
-				session.duration = delta.total_seconds() / 3600.0
+				duration = end_time - session.start_at
+				session.duration = duration.total_seconds() / 3600.0
 			else:
 				session.duration = 0.0
 
-	@api.depends('start_at', 'last_online', 'stop_at')
-	def _compute_offline_duration(self):
-		for session in self:
-			if session.offline_mode and session.last_online and session.start_at:
-				if session.stop_at:
-					# Sessione chiusa: calcola tempo offline fino alla chiusura
-					offline_time = session.stop_at - session.last_online
-				else:
-					# Sessione aperta: calcola tempo offline fino ad ora
-					offline_time = fields.Datetime.now() - session.last_online
-
-				session.offline_duration = max(0, offline_time.total_seconds() / 3600.0)
-			else:
-				session.offline_duration = 0.0
-
-	@api.depends('order_ids')
+	@api.depends('order_ids.synced_to_odoo', 'order_ids.amount_total')
 	def _compute_order_stats(self):
+		"""Calcola statistiche ordini"""
 		for session in self:
 			orders = session.order_ids
 			session.order_count = len(orders)
+			session.synced_order_count = len(orders.filtered('synced_to_odoo'))
+			session.pending_order_count = len(orders.filtered(lambda o: not o.synced_to_odoo))
+			session.total_amount = sum(orders.mapped('amount_total'))
 
-			# Conta ordini sincronizzati (assumendo campo synced_to_odoo)
-			synced_orders = orders.filtered(lambda o: getattr(o, 'synced_to_odoo', True))
-			session.synced_order_count = len(synced_orders)
-			session.pending_order_count = session.order_count - session.synced_order_count
-
-	def _compute_document_stats(self):
+	@api.depends('pending_order_count', 'is_online')
+	def _compute_sync_status(self):
+		"""Calcola stato di sincronizzazione"""
 		for session in self:
-			# Conta picking collegati agli ordini della sessione
-			pickings = self.env['stock.picking'].search([
-				('sale_id', 'in', session.order_ids.ids)
-			])
-			session.picking_count = len(pickings)
-
-			# Conta DDT collegati ai picking
-			ddts = self.env['stock.delivery.note'].search([
-				('picking_ids', 'in', pickings.ids)
-			])
-			session.ddt_count = len(ddts)
+			if session.pending_order_count == 0:
+				session.sync_status = 'synced'
+			elif session.is_online:
+				session.sync_status = 'pending'
+			else:
+				session.sync_status = 'error'
 
 	# === CONSTRAINTS ===
-	@api.constrains('start_at', 'stop_at')
-	def _check_dates(self):
-		for session in self:
-			if session.stop_at and session.start_at and session.stop_at < session.start_at:
-				raise ValidationError(_('La data di fine non può essere precedente a quella di inizio'))
-
-	@api.constrains('config_id', 'state', 'user_id')
+	@api.constrains('config_id', 'state')
 	def _check_unique_opened_session(self):
+		"""Verifica che ci sia una sola sessione aperta per configurazione"""
 		for session in self:
 			if session.state == 'opened':
 				existing = self.search([
@@ -319,12 +269,12 @@ class RaccoltaSession(models.Model):
 			# Mostra warning ma permetti chiusura
 			message = _('Attenzione: ci sono %d ordini non sincronizzati. '
 						'Ricorda di sincronizzare prima di disconnetterti.') % self.pending_order_count
-
+			
 			return {
 				'type': 'ir.actions.client',
 				'tag': 'display_notification',
 				'params': {
-					'title': _('Ordini non sincronizzati'),
+					'title': _('Ordini Non Sincronizzati'),
 					'message': message,
 					'type': 'warning',
 					'sticky': True,
@@ -339,281 +289,135 @@ class RaccoltaSession(models.Model):
 
 		return True
 
-	def action_rescue(self):
-		"""Imposta la sessione in modalità recupero"""
+	def action_force_close(self):
+		"""Forza la chiusura della sessione"""
 		self.ensure_one()
+		
+		self.write({
+			'state': 'closed',
+			'stop_at': fields.Datetime.now()
+		})
+		
+		return True
 
+	def action_rescue(self):
+		"""Recupera sessione in errore"""
+		self.ensure_one()
+		
 		self.write({
 			'state': 'rescue',
-			'rescue': True,
-			'notes': (self.notes or '') + f'\n[{fields.Datetime.now()}] Sessione impostata in modalità recupero'
+			'last_online': fields.Datetime.now()
 		})
+		
+		return True
 
-	def open_ui(self):
-		"""Apre l'interfaccia della raccolta ordini per questa sessione"""
+	def sync_all_orders(self):
+		"""Sincronizza tutti gli ordini pendenti"""
 		self.ensure_one()
-
-		if self.state not in ['opened', 'rescue']:
-			raise UserError(_('La sessione deve essere aperta per accedere all\'interfaccia'))
-
-		return {
-			'type': 'ir.actions.act_url',
-			'url': f'/raccolta/ui?session_id={self.id}',
-			'target': 'self',
-		}
-
-	def set_offline_mode(self, offline=True):
-		"""Imposta modalità offline"""
-		self.ensure_one()
-
-		values = {'offline_mode': offline}
-
-		if not offline:
-			# Torna online
-			values['last_online'] = fields.Datetime.now()
-
-		self.write(values)
-
-	def sync_session_data(self, sync_data=None):
-		"""Sincronizza i dati della sessione"""
-		self.ensure_one()
-
-		try:
-			sync_results = {
-				'orders_synced': 0,
-				'pickings_synced': 0,
-				'ddts_synced': 0,
-				'errors': []
+		
+		pending_orders = self.order_ids.filtered(lambda o: not o.synced_to_odoo)
+		
+		if not pending_orders:
+			return {
+				'type': 'ir.actions.client',
+				'tag': 'display_notification',
+				'params': {
+					'title': _('Sincronizzazione'),
+					'message': _('Tutti gli ordini sono già sincronizzati'),
+					'type': 'info',
+				}
 			}
-
-			if sync_data:
-				# Sincronizza ordini
-				if 'orders' in sync_data:
-					orders_result = self._sync_orders(sync_data['orders'])
-					sync_results['orders_synced'] = orders_result.get('synced', 0)
-					sync_results['errors'].extend(orders_result.get('errors', []))
-
-				# Sincronizza picking
-				if 'pickings' in sync_data:
-					pickings_result = self._sync_pickings(sync_data['pickings'])
-					sync_results['pickings_synced'] = pickings_result.get('synced', 0)
-					sync_results['errors'].extend(pickings_result.get('errors', []))
-
-				# Sincronizza DDT
-				if 'ddts' in sync_data:
-					ddts_result = self._sync_ddts(sync_data['ddts'])
-					sync_results['ddts_synced'] = ddts_result.get('synced', 0)
-					sync_results['errors'].extend(ddts_result.get('errors', []))
-
-			# Aggiorna statistiche sincronizzazione
-			self.write({
-				'last_sync_at': fields.Datetime.now(),
-				'sync_count': self.sync_count + 1,
-				'sync_error_count': self.sync_error_count + len(sync_results['errors']),
-				'last_sync_error': '\n'.join(sync_results['errors']) if sync_results['errors'] else False
-			})
-
-			# Aggiorna timestamp utente
-			self.user_id.update_last_sync()
-
-			return sync_results
-
-		except Exception as e:
-			# Log errore
-			error_msg = f"Errore sincronizzazione sessione {self.name}: {str(e)}"
-			self.write({
-				'last_sync_error': error_msg,
-				'sync_error_count': self.sync_error_count + 1
-			})
-			raise UserError(error_msg)
-
-	def _sync_orders(self, orders_data):
-		"""Sincronizza ordini offline"""
-		results = {'synced': 0, 'errors': []}
-
-		for order_data in orders_data:
+		
+		# Esegui sincronizzazione
+		synced_count = 0
+		error_count = 0
+		
+		for order in pending_orders:
 			try:
-				# Crea o aggiorna ordine
-				order = self._create_or_update_order(order_data)
-				if order:
-					results['synced'] += 1
-
+				order.sync_to_odoo()
+				synced_count += 1
 			except Exception as e:
-				error_msg = f"Errore ordine {order_data.get('name', 'Unknown')}: {str(e)}"
-				results['errors'].append(error_msg)
-
-		return results
-
-	def _sync_pickings(self, pickings_data):
-		"""Sincronizza picking offline"""
-		results = {'synced': 0, 'errors': []}
-
-		for picking_data in pickings_data:
-			try:
-				# Crea o aggiorna picking
-				picking = self._create_or_update_picking(picking_data)
-				if picking:
-					results['synced'] += 1
-
-			except Exception as e:
-				error_msg = f"Errore picking {picking_data.get('name', 'Unknown')}: {str(e)}"
-				results['errors'].append(error_msg)
-
-		return results
-
-	def _sync_ddts(self, ddts_data):
-		"""Sincronizza DDT offline"""
-		results = {'synced': 0, 'errors': []}
-
-		for ddt_data in ddts_data:
-			try:
-				# Crea o aggiorna DDT
-				ddt = self._create_or_update_ddt(ddt_data)
-				if ddt:
-					results['synced'] += 1
-
-			except Exception as e:
-				error_msg = f"Errore DDT {ddt_data.get('name', 'Unknown')}: {str(e)}"
-				results['errors'].append(error_msg)
-
-		return results
-
-	def _create_or_update_order(self, order_data):
-		"""Crea o aggiorna un ordine da dati offline"""
-		# Cerca ordine esistente by name
-		existing_order = self.env['sale.order'].search([
-			('name', '=', order_data.get('name')),
-			('raccolta_session_id', '=', self.id)
-		], limit=1)
-
-		if existing_order:
-			# Aggiorna ordine esistente
-			existing_order.write(self._prepare_order_values(order_data))
-			return existing_order
-		else:
-			# Crea nuovo ordine
-			order_vals = self._prepare_order_values(order_data)
-			order_vals['raccolta_session_id'] = self.id
-			return self.env['sale.order'].create(order_vals)
-
-	def _create_or_update_picking(self, picking_data):
-		"""Crea o aggiorna un picking da dati offline"""
-		# Cerca picking esistente by name
-		existing_picking = self.env['stock.picking'].search([
-			('name', '=', picking_data.get('name'))
-		], limit=1)
-
-		if existing_picking:
-			# Aggiorna picking esistente
-			existing_picking.write(self._prepare_picking_values(picking_data))
-			return existing_picking
-		else:
-			# Crea nuovo picking
-			picking_vals = self._prepare_picking_values(picking_data)
-			return self.env['stock.picking'].create(picking_vals)
-
-	def _create_or_update_ddt(self, ddt_data):
-		"""Crea o aggiorna un DDT da dati offline"""
-		# Cerca DDT esistente by name
-		existing_ddt = self.env['stock.delivery.note'].search([
-			('name', '=', ddt_data.get('name'))
-		], limit=1)
-
-		if existing_ddt:
-			# Aggiorna DDT esistente
-			existing_ddt.write(self._prepare_ddt_values(ddt_data))
-			return existing_ddt
-		else:
-			# Crea nuovo DDT
-			ddt_vals = self._prepare_ddt_values(ddt_data)
-			return self.env['stock.delivery.note'].create(ddt_vals)
-
-	def _prepare_order_values(self, order_data):
-		"""Prepara valori per creazione/aggiornamento ordine"""
+				error_count += 1
+				# Log dell'errore
+				import logging
+				_logger = logging.getLogger(__name__)
+				_logger.error(f"Errore sincronizzazione ordine {order.name}: {e}")
+		
+		# Aggiorna stato connessione
+		self.write({
+			'is_online': True,
+			'last_online': fields.Datetime.now()
+		})
+		
+		message = _('Sincronizzati %d ordini') % synced_count
+		if error_count > 0:
+			message += _(', %d errori') % error_count
+		
 		return {
-			'name': order_data.get('name'),
-			'partner_id': order_data.get('partner_id'),
-			'date_order': order_data.get('date_order'),
-			'state': order_data.get('state', 'draft'),
-			'note': order_data.get('notes', ''),
-			'warehouse_id': self.config_id.warehouse_id.id,
-			'company_id': self.company_id.id,
-			'user_id': self.user_id.id,
-			# Aggiungi altre mappature necessarie
+			'type': 'ir.actions.client',
+			'tag': 'display_notification',
+			'params': {
+				'title': _('Sincronizzazione Completata'),
+				'message': message,
+				'type': 'success' if error_count == 0 else 'warning',
+			}
 		}
 
-	def _prepare_picking_values(self, picking_data):
-		"""Prepara valori per creazione/aggiornamento picking"""
-		return {
-			'name': picking_data.get('name'),
-			'partner_id': picking_data.get('partner_id'),
-			'location_id': self.config_id.location_id.id,
-			'location_dest_id': self.config_id.location_dest_id.id,
-			'picking_type_id': self.config_id.warehouse_id.out_type_id.id,
-			'state': picking_data.get('state', 'draft'),
-			'scheduled_date': picking_data.get('scheduled_date'),
-			# Aggiungi altre mappature necessarie
-		}
-
-	def _prepare_ddt_values(self, ddt_data):
-		"""Prepara valori per creazione/aggiornamento DDT"""
-		return {
-			'name': ddt_data.get('name'),
-			'partner_id': ddt_data.get('partner_id'),
-			'partner_shipping_id': ddt_data.get('partner_shipping_id'),
-			'type_id': self.config_id.ddt_type_id.id,
-			'transport_reason_id': ddt_data.get('transport_reason_id') or self.config_id.ddt_transport_reason_id.id,
-			'goods_appearance_id': ddt_data.get('goods_appearance_id') or self.config_id.ddt_goods_appearance_id.id,
-			'transport_condition_id': ddt_data.get(
-				'transport_condition_id') or self.config_id.ddt_transport_condition_id.id,
-			'date': ddt_data.get('date'),
-			'state': ddt_data.get('state', 'draft'),
-			# Aggiungi altre mappature necessarie
-		}
-
-	# === REPORT METHODS ===
-	def get_session_summary(self):
-		"""Restituisce riassunto della sessione"""
+	def get_session_data(self):
+		"""Ottiene dati completi per uso offline"""
 		self.ensure_one()
-
+		
 		return {
-			'session_name': self.display_name,
-			'duration_hours': round(self.duration, 2),
-			'offline_hours': round(self.offline_duration, 2),
-			'orders_total': self.order_count,
-			'orders_synced': self.synced_order_count,
-			'orders_pending': self.pending_order_count,
-			'pickings_count': self.picking_count,
-			'ddts_count': self.ddt_count,
-			'sync_count': self.sync_count,
-			'sync_errors': self.sync_error_count,
-			'last_sync': self.last_sync_at.isoformat() if self.last_sync_at else None,
-			'state': self.state,
-			'offline_mode': self.offline_mode,
+			'session': {
+				'id': self.id,
+				'name': self.name,
+				'state': self.state,
+				'start_at': self.start_at.isoformat() if self.start_at else None,
+				'user_id': self.user_id.id,
+				'agent_code': self.user_id.agent_code,
+				'config_id': self.config_id.id,
+			},
+			'config_data': self.config_id.get_offline_data(),
+			'counters': self.user_id.get_offline_counters() if self.user_id.is_raccolta_agent else {},
 		}
 
-	# === SEARCH METHODS ===
-	@api.model
-	def get_active_sessions(self):
-		"""Restituisce sessioni attive"""
-		return self.search([('state', 'in', ['opened', 'rescue'])])
+	def update_online_status(self, is_online=True):
+		"""Aggiorna stato di connessione"""
+		self.ensure_one()
+		
+		vals = {
+			'is_online': is_online,
+		}
+		
+		if is_online:
+			vals['last_online'] = fields.Datetime.now()
+		
+		self.write(vals)
+		
+		return True
 
 	@api.model
-	def get_user_sessions(self, user_id=None):
-		"""Restituisce sessioni dell'utente"""
-		user_id = user_id or self.env.user.id
-		return self.search([('user_id', '=', user_id)])
+	def get_current_session(self, config_id=None):
+		"""Ottiene la sessione corrente per la configurazione"""
+		if not config_id:
+			# Usa configurazione di default dell'utente
+			config = self.env['raccolta.config'].get_default_config()
+			config_id = config.id
+		
+		session = self.search([
+			('config_id', '=', config_id),
+			('state', '=', 'opened'),
+			('user_id', '=', self.env.user.id)
+		], limit=1)
+		
+		return session
 
-	@api.model
-	def cleanup_old_sessions(self, days=30):
-		"""Pulisce sessioni vecchie"""
-		cutoff_date = fields.Datetime.now() - timedelta(days=days)
-		old_sessions = self.search([
-			('state', '=', 'closed'),
-			('stop_at', '<', cutoff_date)
-		])
-
-		# Non cancellare, ma archiviare
-		old_sessions.write({'active': False})
-
-		return len(old_sessions)
+	def action_view_orders(self):
+		"""Visualizza ordini della sessione"""
+		self.ensure_one()
+		
+		action = self.env.ref('sale.action_orders').read()[0]
+		action['domain'] = [('raccolta_session_id', '=', self.id)]
+		action['context'] = {'default_raccolta_session_id': self.id}
+		
+		return action

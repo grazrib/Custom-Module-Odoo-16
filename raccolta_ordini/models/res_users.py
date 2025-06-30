@@ -65,55 +65,59 @@ class ResUsers(models.Model):
 	# === STATISTICHE ===
 	total_offline_orders = fields.Integer(
 		string='Totale Ordini Offline',
-		compute='_compute_order_stats',
-		help='Numero totale di ordini creati offline'
+		compute='_compute_offline_stats',
+		help='Numero totale di ordini creati offline da questo agente'
 	)
 
 	pending_sync_count = fields.Integer(
 		string='Ordini da Sincronizzare',
-		compute='_compute_order_stats',
-		help='Numero di ordini in attesa di sincronizzazione'
+		compute='_compute_offline_stats',
+		help='Numero di ordini non ancora sincronizzati'
 	)
 
 	last_sync_date = fields.Datetime(
 		string='Ultima Sincronizzazione',
-		help='Data e ora dell\'ultima sincronizzazione'
+		help='Data e ora dell\'ultima sincronizzazione riuscita'
+	)
+
+	last_activity_date = fields.Datetime(
+		string='Ultima Attività',
+		help='Data e ora dell\'ultima attività offline'
 	)
 
 	# === CONSTRAINTS ===
 	@api.constrains('agent_code')
 	def _check_agent_code_unique(self):
-		for record in self:
-			if record.agent_code and record.is_raccolta_agent:
+		"""Verifica unicità codice agente"""
+		for user in self:
+			if user.agent_code:
 				existing = self.search([
-					('agent_code', '=', record.agent_code),
-					('is_raccolta_agent', '=', True),
-					('id', '!=', record.id)
+					('agent_code', '=', user.agent_code),
+					('id', '!=', user.id)
 				])
 				if existing:
-					raise ValidationError(_('Il codice agente deve essere univoco'))
+					raise ValidationError(_('Codice agente "%s" già esistente') % user.agent_code)
 
-	@api.constrains('max_offline_orders')
-	def _check_max_offline_orders(self):
-		for record in self:
-			if record.max_offline_orders <= 0:
-				raise ValidationError(_('Il numero massimo di ordini offline deve essere maggiore di zero'))
+	@api.constrains('is_raccolta_agent', 'agent_code')
+	def _check_agent_requirements(self):
+		"""Verifica requisiti per agenti"""
+		for user in self:
+			if user.is_raccolta_agent and not user.agent_code:
+				# Genera automaticamente se mancante
+				user.agent_code = user._generate_agent_code()
 
 	# === COMPUTED FIELDS ===
-	@api.depends('order_sequence_id')
-	def _compute_order_stats(self):
+	@api.depends('is_raccolta_agent')
+	def _compute_offline_stats(self):
+		"""Calcola statistiche ordini offline"""
 		for user in self:
-			if user.is_raccolta_agent and user.order_sequence_id:
-				# Conta ordini creati offline (by sequence prefix)
+			if user.is_raccolta_agent:
 				orders = self.env['sale.order'].search([
-					('name', 'like', user.order_sequence_id.prefix + '%'),
-					('create_uid', '=', user.id)
+					('create_uid', '=', user.id),
+					('is_offline_order', '=', True)
 				])
 				user.total_offline_orders = len(orders)
-
-				# Conta ordini non sincronizzati
-				pending = orders.filtered(lambda o: not getattr(o, 'synced_to_odoo', True))
-				user.pending_sync_count = len(pending)
+				user.pending_sync_count = len(orders.filtered(lambda o: not o.synced_to_odoo))
 			else:
 				user.total_offline_orders = 0
 				user.pending_sync_count = 0
@@ -320,48 +324,45 @@ class ResUsers(models.Model):
 		if not self.is_raccolta_agent:
 			raise UserError(_('Utente non abilitato alla raccolta ordini'))
 
-		counters = self.get_offline_counters()
-		reserved = {}
+		result = {}
 
 		# Riserva numeri ordini
 		if order_count > 0:
-			start = counters['order_next']
-			self.order_sequence_id.write({'number_next_actual': start + order_count})
-			reserved['orders'] = {
+			start = self.order_sequence_id.number_next_actual
+			self.order_sequence_id.write({
+				'number_next_actual': start + order_count
+			})
+			result['orders'] = {
 				'start': start,
 				'end': start + order_count - 1,
-				'prefix': counters['order_prefix'],
-				'format': f"{counters['order_prefix']}{{:03d}}"
+				'prefix': self.order_sequence_id.prefix
 			}
 
 		# Riserva numeri DDT
 		if ddt_count > 0:
-			start = counters['ddt_next']
-			self.ddt_sequence_id.write({'number_next_actual': start + ddt_count})
-			reserved['ddts'] = {
+			start = self.ddt_sequence_id.number_next_actual
+			self.ddt_sequence_id.write({
+				'number_next_actual': start + ddt_count
+			})
+			result['ddt'] = {
 				'start': start,
 				'end': start + ddt_count - 1,
-				'prefix': counters['ddt_prefix'],
-				'format': f"{counters['ddt_prefix']}{{:03d}}"
+				'prefix': self.ddt_sequence_id.prefix
 			}
 
 		# Riserva numeri picking
 		if picking_count > 0:
-			start = counters['picking_next']
-			self.picking_sequence_id.write({'number_next_actual': start + picking_count})
-			reserved['pickings'] = {
+			start = self.picking_sequence_id.number_next_actual
+			self.picking_sequence_id.write({
+				'number_next_actual': start + picking_count
+			})
+			result['picking'] = {
 				'start': start,
 				'end': start + picking_count - 1,
-				'prefix': counters['picking_prefix'],
-				'format': f"{counters['picking_prefix']}{{:03d}}"
+				'prefix': self.picking_sequence_id.prefix
 			}
 
-		return reserved
-
-	def update_last_sync(self):
-		"""Aggiorna timestamp ultima sincronizzazione"""
-		self.ensure_one()
-		self.last_sync_date = fields.Datetime.now()
+		return result
 
 	def get_next_order_number(self):
 		"""Genera il prossimo numero ordine per uso offline"""
@@ -427,5 +428,63 @@ class ResUsers(models.Model):
 				'title': _('Sequenze Create'),
 				'message': _('Le sequenze per l\'agente sono state create con successo'),
 				'type': 'success',
+			}
+		}
+
+	def action_view_orders(self):
+		"""Visualizza ordini dell'agente"""
+		self.ensure_one()
+
+		action = self.env.ref('sale.action_orders').read()[0]
+		action['domain'] = [('create_uid', '=', self.id), ('is_offline_order', '=', True)]
+		action['context'] = {'default_create_uid': self.id}
+
+		return action
+
+	def sync_offline_orders(self):
+		"""Sincronizza tutti gli ordini offline dell'agente"""
+		self.ensure_one()
+
+		pending_orders = self.env['sale.order'].search([
+			('create_uid', '=', self.id),
+			('is_offline_order', '=', True),
+			('synced_to_odoo', '=', False)
+		])
+
+		if not pending_orders:
+			return {
+				'type': 'ir.actions.client',
+				'tag': 'display_notification',
+				'params': {
+					'title': _('Sincronizzazione'),
+					'message': _('Nessun ordine da sincronizzare'),
+					'type': 'info',
+				}
+			}
+
+		synced_count = 0
+		error_count = 0
+
+		for order in pending_orders:
+			try:
+				order.sync_to_odoo()
+				synced_count += 1
+			except Exception as e:
+				error_count += 1
+
+		# Aggiorna data ultima sincronizzazione
+		self.last_sync_date = fields.Datetime.now()
+
+		message = _('Sincronizzati %d ordini') % synced_count
+		if error_count > 0:
+			message += _(', %d errori') % error_count
+
+		return {
+			'type': 'ir.actions.client',
+			'tag': 'display_notification',
+			'params': {
+				'title': _('Sincronizzazione Completata'),
+				'message': message,
+				'type': 'success' if error_count == 0 else 'warning',
 			}
 		}
