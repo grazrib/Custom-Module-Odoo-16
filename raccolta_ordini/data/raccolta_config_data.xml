@@ -64,42 +64,5 @@
             <field name="company_id" ref="base.main_company"/>
         </record>
 
-        <!-- ================================= -->
-        <!-- DATI DEMO (solo development)      -->
-        <!-- ================================= -->
-
-        <!-- Categoria demo per prodotti raccolta -->
-        <record id="demo_product_category" model="product.category">
-            <field name="name">Prodotti Demo Raccolta</field>
-            <field name="parent_id" ref="product.product_category_all"/>
-        </record>
-
-        <!-- Prodotto demo per test -->
-        <record id="demo_product" model="product.product">
-            <field name="name">Prodotto Demo Raccolta</field>
-            <field name="default_code">DEMO001</field>
-            <field name="categ_id" ref="demo_product_category"/>
-            <field name="type">product</field>
-            <field name="sale_ok" eval="True"/>
-            <field name="purchase_ok" eval="False"/>
-            <field name="list_price" eval="100.0"/>
-            <field name="standard_price" eval="50.0"/>
-        </record>
-
-        <!-- Partner demo per test -->
-        <record id="demo_partner" model="res.partner">
-            <field name="name">Cliente Demo Raccolta</field>
-            <field name="is_company" eval="True"/>
-            <field name="customer_rank" eval="1"/>
-            <field name="supplier_rank" eval="0"/>
-            <field name="street">Via Demo 123</field>
-            <field name="city">Milano</field>
-            <field name="zip">20100</field>
-            <field name="country_id" ref="base.it"/>
-            <field name="vat">IT12345678901</field>
-            <field name="email">demo@raccolta.test</field>
-            <field name="phone">+39 02 1234567</field>
-        </record>
-
     </data>
 </odoo>

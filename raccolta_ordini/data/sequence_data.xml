@@ -3,11 +3,11 @@
     <data noupdate="1">
 
         <!-- ================================= -->
-        <!-- SEQUENZE BASE RACCOLTA            -->
+        <!-- SEQUENZE GENERICHE SISTEMA        -->
         <!-- ================================= -->
 
-        <!-- Sequenza per ordini raccolta generici -->
-        <record id="sequence_raccolta_order_generic" model="ir.sequence">
+        <!-- Sequenza generica per ordini raccolta -->
+        <record id="sequence_generic_orders" model="ir.sequence">
             <field name="name">Ordini Raccolta - Generico</field>
             <field name="code">raccolta.order.generic</field>
             <field name="prefix">ORD</field>
@@ -20,8 +20,8 @@
             <field name="active" eval="True"/>
         </record>
 
-        <!-- Sequenza per DDT raccolta generici -->
-        <record id="sequence_raccolta_ddt_generic" model="ir.sequence">
+        <!-- Sequenza generica per DDT raccolta -->
+        <record id="sequence_generic_ddt" model="ir.sequence">
             <field name="name">DDT Raccolta - Generico</field>
             <field name="code">raccolta.ddt.generic</field>
             <field name="prefix">DDT</field>
@@ -34,8 +34,8 @@
             <field name="active" eval="True"/>
         </record>
 
-        <!-- Sequenza per picking raccolta generici -->
-        <record id="sequence_raccolta_picking_generic" model="ir.sequence">
+        <!-- Sequenza generica per picking raccolta -->
+        <record id="sequence_generic_picking" model="ir.sequence">
             <field name="name">Picking Raccolta - Generico</field>
             <field name="code">raccolta.picking.generic</field>
             <field name="prefix">PICK</field>
@@ -49,16 +49,16 @@
         </record>
 
         <!-- ================================= -->
-        <!-- SEQUENZE AGENTE DEMO              -->
+        <!-- SEQUENZE PER AGENTI RACCOLTA     -->
         <!-- ================================= -->
 
-        <!-- Sequenza ordini agente demo -->
-        <record id="sequence_demo_agent_orders" model="ir.sequence">
-            <field name="name">Ordini Agente DEMO</field>
-            <field name="code">raccolta.order.agent.demo</field>
-            <field name="prefix">ORDDEMO</field>
+        <!-- Sequenza contatori agenti -->
+        <record id="sequence_agent_counter" model="ir.sequence">
+            <field name="name">Contatori Agenti</field>
+            <field name="code">raccolta.agent.counter</field>
+            <field name="prefix">AG</field>
             <field name="suffix"></field>
-            <field name="padding">6</field>
+            <field name="padding">3</field>
             <field name="number_next">1</field>
             <field name="number_increment">1</field>
             <field name="implementation">standard</field>
@@ -66,82 +66,17 @@
             <field name="active" eval="True"/>
         </record>
 
-        <!-- Sequenza DDT agente demo -->
-        <record id="sequence_demo_agent_ddt" model="ir.sequence">
-            <field name="name">DDT Agente DEMO</field>
-            <field name="code">raccolta.ddt.agent.demo</field>
-            <field name="prefix">DDTDEMO</field>
+        <!-- Sequenza sessioni raccolta -->
+        <record id="sequence_raccolta_session" model="ir.sequence">
+            <field name="name">Sessioni Raccolta</field>
+            <field name="code">raccolta.session</field>
+            <field name="prefix">SES</field>
             <field name="suffix"></field>
             <field name="padding">6</field>
             <field name="number_next">1</field>
             <field name="number_increment">1</field>
             <field name="implementation">standard</field>
             <field name="company_id" ref="base.main_company"/>
-            <field name="active" eval="True"/>
-        </record>
-
-        <!-- Sequenza picking agente demo -->
-        <record id="sequence_demo_agent_picking" model="ir.sequence">
-            <field name="name">Picking Agente DEMO</field>
-            <field name="code">raccolta.picking.agent.demo</field>
-            <field name="prefix">PICKDEMO</field>
-            <field name="suffix"></field>
-            <field name="padding">6</field>
-            <field name="number_next">1</field>
-            <field name="number_increment">1</field>
-            <field name="implementation">standard</field>
-            <field name="company_id" ref="base.main_company"/>
-            <field name="active" eval="True"/>
-        </record>
-
-        <!-- ================================= -->
-        <!-- ASSEGNAZIONE SEQUENZE AD AGENTE   -->
-        <!-- ================================= -->
-
-        <!-- Assegna sequenze all'agente demo -->
-        <function model="res.users" name="write">
-            <value eval="[ref('demo_agent_user')]"/>
-            <value eval="{
-                'order_sequence_id': ref('sequence_demo_agent_orders'),
-                'ddt_sequence_id': ref('sequence_demo_agent_ddt'),
-                'picking_sequence_id': ref('sequence_demo_agent_picking')
-            }"/>
-        </function>
-
-        <!-- ================================= -->
-        <!-- CONTATORI OFFLINE DEMO            -->
-        <!-- ================================= -->
-
-        <!-- Contatore ordini demo -->
-        <record id="counter_demo_orders" model="raccolta.counter">
-            <field name="name">Contatore Ordini DEMO</field>
-            <field name="user_id" ref="demo_agent_user"/>
-            <field name="counter_type">order</field>
-            <field name="current_value">1</field>
-            <field name="prefix">ORDDEMO</field>
-            <field name="padding">6</field>
-            <field name="active" eval="True"/>
-        </record>
-
-        <!-- Contatore DDT demo -->
-        <record id="counter_demo_ddt" model="raccolta.counter">
-            <field name="name">Contatore DDT DEMO</field>
-            <field name="user_id" ref="demo_agent_user"/>
-            <field name="counter_type">ddt</field>
-            <field name="current_value">1</field>
-            <field name="prefix">DDTDEMO</field>
-            <field name="padding">6</field>
-            <field name="active" eval="True"/>
-        </record>
-
-        <!-- Contatore picking demo -->
-        <record id="counter_demo_picking" model="raccolta.counter">
-            <field name="name">Contatore Picking DEMO</field>
-            <field name="user_id" ref="demo_agent_user"/>
-            <field name="counter_type">picking</field>
-            <field name="current_value">1</field>
-            <field name="prefix">PICKDEMO</field>
-            <field name="padding">6</field>
             <field name="active" eval="True"/>
         </record>
 
