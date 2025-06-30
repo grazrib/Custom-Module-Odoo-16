@@ -60,17 +60,11 @@ class SaleOrder(models.Model):
 	)
 
 	# ✅ CORRETTI: Campi DDT per compatibilità con l10n_it_delivery_note_base
-	ddt_ids = fields.One2many(
-		'stock.delivery.note',
-		'sale_order_id',  # Campo che potrebbe esistere nel modulo DDT
-		string='DDT Collegati',
-		help='DDT generati per questo ordine'
-	)
-
+	# Utilizziamo campi computed per evitare problemi di relazione diretta
 	ddt_count = fields.Integer(
 		string='Numero DDT',
 		compute='_compute_ddt_count',
-		help='Numero di DDT collegati'
+		help='Numero di DDT collegati tramite picking'
 	)
 
 	# === CAMPI RICEVUTE ===
@@ -115,11 +109,16 @@ class SaleOrder(models.Model):
 	)
 
 	# === COMPUTED FIELDS ===
-	@api.depends('ddt_ids')
+	@api.depends('picking_ids')
 	def _compute_ddt_count(self):
-		"""Calcola il numero di DDT collegati"""
+		"""Calcola il numero di DDT collegati tramite picking"""
 		for order in self:
-			order.ddt_count = len(order.ddt_ids)
+			ddt_count = 0
+			for picking in order.picking_ids:
+				# Conta DDT collegati ai picking
+				if hasattr(picking, 'delivery_note_ids'):
+					ddt_count += len(picking.delivery_note_ids)
+			order.ddt_count = ddt_count
 
 	# === BUSINESS METHODS ===
 	@api.model
@@ -312,7 +311,13 @@ class SaleOrder(models.Model):
 		"""Visualizza DDT collegati"""
 		self.ensure_one()
 		
-		if not self.ddt_ids:
+		# Trova DDT tramite picking
+		ddt_ids = []
+		for picking in self.picking_ids:
+			if hasattr(picking, 'delivery_note_ids'):
+				ddt_ids.extend(picking.delivery_note_ids.ids)
+		
+		if not ddt_ids:
 			return {
 				'type': 'ir.actions.client',
 				'tag': 'display_notification',
@@ -323,13 +328,22 @@ class SaleOrder(models.Model):
 				}
 			}
 		
-		action = self.env.ref('l10n_it_delivery_note_base.action_stock_delivery_note_out').read()[0]
+		try:
+			action = self.env.ref('l10n_it_delivery_note.action_stock_delivery_note_out').read()[0]
+		except:
+			# Fallback se riferimento non trovato
+			action = {
+				'type': 'ir.actions.act_window',
+				'name': _('DDT'),
+				'res_model': 'stock.delivery.note',
+				'view_mode': 'tree,form',
+			}
 		
-		if len(self.ddt_ids) > 1:
-			action['domain'] = [('id', 'in', self.ddt_ids.ids)]
+		if len(ddt_ids) > 1:
+			action['domain'] = [('id', 'in', ddt_ids)]
 		else:
 			action['views'] = [(False, 'form')]
-			action['res_id'] = self.ddt_ids.id
+			action['res_id'] = ddt_ids[0]
 		
 		return action
 

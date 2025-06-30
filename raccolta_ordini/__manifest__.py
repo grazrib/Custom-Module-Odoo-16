@@ -74,16 +74,16 @@ Requisiti:
 		'views/raccolta_assets.xml',
 		'views/raccolta_index.xml',
 		'views/raccolta_config_view.xml',
-		'views/raccolta_session_view.xml',
-		'views/res_users_view.xml',
-		'views/sale_order_view.xml',
-		'views/stock_picking_view.xml',
+		'views/raccolta_session_view.xml',  # ✅ Ora ha action_raccolta_session
+		'views/res_users_view.xml',         # ✅ Ora ha action_raccolta_agents
+		'views/sale_order_view.xml',        # ✅ Già aveva action_raccolta_orders
+		'views/stock_picking_view.xml',     # ✅ Ora ha action_picking_raccolta
 		'views/raccolta_menus.xml',
 
 		# Wizards ✅ AGGIUNTI
 		'wizards/mass_sync_wizard_view.xml',
 
-		# Reports ✅ AGGIUNTI
+		# Reports ✅ CORRETTI
 		'reports/receipt_templates.xml',
 	],
 	'assets': {

@@ -1,3 +1,3 @@
 # -*- coding: utf-8 -*-
 
-from . import receipt_report
+from . import thermal_receipt_report

@@ -12,6 +12,20 @@
             <field name="inherit_id" ref="sale.view_order_form"/>
             <field name="arch" type="xml">
 
+                <!-- Aggiungi badge sessione raccolta nel header -->
+                <xpath expr="//header" position="inside">
+                    <div class="alert alert-info" role="alert" 
+                         attrs="{'invisible': [('raccolta_session_id', '=', False)]}">
+                        <strong>Ordine Raccolta:</strong> 
+                        <field name="raccolta_session_id" readonly="1" class="oe_inline"/>
+                        - Agente: <field name="agent_code" readonly="1" class="oe_inline"/>
+                        <span attrs="{'invisible': [('synced_to_odoo', '=', True)]}" 
+                              class="badge badge-warning">Non Sincronizzato</span>
+                        <span attrs="{'invisible': [('synced_to_odoo', '=', False)]}" 
+                              class="badge badge-success">Sincronizzato</span>
+                    </div>
+                </xpath>
+
                 <!-- Aggiungi campi raccolta dopo partner -->
                 <xpath expr="//field[@name='partner_id']" position="after">
                     <field name="raccolta_session_id" readonly="1"
@@ -47,35 +61,72 @@
                             <group string="Ricevute">
                                 <field name="receipt_printed" readonly="1"/>
                                 <field name="receipt_format"/>
+                                <button name="print_receipt" string="Stampa Ricevuta 48mm" 
+                                        type="object" class="btn-primary" 
+                                        context="{'format': '48mm'}"/>
+                                <button name="print_receipt" string="Stampa Ricevuta 80mm" 
+                                        type="object" class="btn-secondary" 
+                                        context="{'format': '80mm'}"/>
+                            </group>
+                        </group>
+
+                        <!-- DDT collegati -->
+                        <group string="DDT" attrs="{'invisible': [('ddt_count', '=', 0)]}">
+                            <group>
+                                <field name="ddt_count" readonly="1"/>
+                                <button name="action_view_ddt" string="Visualizza DDT" 
+                                        type="object" class="btn-info"
+                                        attrs="{'invisible': [('ddt_count', '=', 0)]}"/>
                             </group>
                         </group>
 
                         <!-- Note Estese -->
                         <group>
-                            <group string="Note">
-                                <field name="general_notes" widget="text"/>
-                                <field name="internal_notes" widget="text"/>
-                                <field name="delivery_instructions" widget="text"/>
+                            <group string="Note Generali">
+                                <field name="general_notes" widget="text" nolabel="1"/>
                             </group>
+                            <group string="Note Interne">
+                                <field name="internal_notes" widget="text" nolabel="1"/>
+                            </group>
+                        </group>
+
+                        <group string="Istruzioni Consegna">
+                            <field name="delivery_instructions" widget="text" nolabel="1"/>
                         </group>
 
                         <!-- Firma digitale -->
                         <group string="Firma Cliente"
-                               attrs="{'invisible': [('has_signature', '=', False)]}">
-                            <field name="has_signature" invisible="1"/>
-                            <field name="signature_data" widget="text" readonly="1"/>
+                               attrs="{'invisible': [('signature_data', '=', False)]}">
+                            <field name="signature_data" widget="text" readonly="1" nolabel="1"/>
                         </group>
 
-                        <!-- Azione Sincronizzazione -->
+                        <!-- Dati cliente offline -->
+                        <group string="Dati Cliente Offline (JSON)"
+                               attrs="{'invisible': [('offline_client_data', '=', False)]}">
+                            <field name="offline_client_data" widget="text" readonly="1" nolabel="1"/>
+                        </group>
+
+                        <!-- Azioni Sincronizzazione -->
                         <div class="oe_clear">
                             <group>
-                                <button name="mark_as_synced" type="object"
-                                        string="Marca come Sincronizzato" class="btn-success"
+                                <button name="sync_to_odoo" type="object"
+                                        string="Sincronizza Manualmente" class="btn-warning"
                                         attrs="{'invisible': ['|', ('raccolta_session_id', '=', False), ('synced_to_odoo', '=', True)]}"
-                                        confirm="Marcare questo ordine come sincronizzato?"/>
+                                        confirm="Sincronizzare questo ordine manualmente?"/>
+                                <button name="create_receipt_data" type="object"
+                                        string="Rigenera Dati Ricevuta" class="btn-info"/>
                             </group>
                         </div>
                     </page>
+                </xpath>
+
+                <!-- Aggiungi bottoni smart -->
+                <xpath expr="//div[hasclass('oe_button_box')]" position="inside">
+                    <button name="action_view_ddt" type="object" 
+                            class="oe_stat_button" icon="fa-truck"
+                            attrs="{'invisible': [('ddt_count', '=', 0)]}">
+                        <field name="ddt_count" widget="statinfo" string="DDT"/>
+                    </button>
                 </xpath>
 
             </field>
@@ -91,16 +142,34 @@
             <field name="inherit_id" ref="sale.view_quotation_tree"/>
             <field name="arch" type="xml">
 
+                <!-- Aggiungi decorazione per ordini raccolta -->
+                <xpath expr="//tree" position="attributes">
+                    <attribute name="decoration-info">raccolta_session_id != False</attribute>
+                    <attribute name="decoration-warning">raccolta_session_id != False and synced_to_odoo == False</attribute>
+                </xpath>
+
                 <!-- Aggiungi colonne raccolta -->
                 <xpath expr="//field[@name='user_id']" position="after">
                     <field name="raccolta_session_id" string="Sessione Raccolta"
                            attrs="{'invisible': [('raccolta_session_id', '=', False)]}"/>
-                    <field name="agent_code" string="Cod. Agente"
+                    <field name="agent_code" string="Agente"
                            attrs="{'invisible': [('raccolta_session_id', '=', False)]}"/>
                     <field name="is_offline_order" string="Offline" widget="boolean"
                            attrs="{'invisible': [('raccolta_session_id', '=', False)]}"/>
                     <field name="synced_to_odoo" string="Sincronizzato" widget="boolean"
                            attrs="{'invisible': [('raccolta_session_id', '=', False)]}"/>
+                    <field name="ddt_count" string="DDT"
+                           attrs="{'invisible': [('raccolta_session_id', '=', False)]}"/>
+                </xpath>
+
+                <!-- Aggiungi bottoni rapidi -->
+                <xpath expr="//tree" position="inside">
+                    <button name="print_receipt" type="object" icon="fa-print" 
+                            title="Stampa Ricevuta 48mm" context="{'format': '48mm'}"
+                            attrs="{'invisible': [('raccolta_session_id', '=', False)]}"/>
+                    <button name="sync_to_odoo" type="object" icon="fa-sync" 
+                            title="Sincronizza"
+                            attrs="{'invisible': ['|', ('raccolta_session_id', '=', False), ('synced_to_odoo', '=', True)]}"/>
                 </xpath>
 
             </field>
@@ -116,34 +185,173 @@
             <field name="inherit_id" ref="sale.view_sales_order_filter"/>
             <field name="arch" type="xml">
 
+                <!-- Aggiungi campi di ricerca -->
+                <xpath expr="//field[@name='name']" position="after">
+                    <field name="agent_code" string="Codice Agente"/>
+                    <field name="raccolta_session_id" string="Sessione Raccolta"/>
+                </xpath>
+
                 <!-- Aggiungi filtri raccolta -->
                 <xpath expr="//search" position="inside">
                     <separator/>
                     
                     <filter string="Ordini Raccolta" name="raccolta_orders"
-                            domain="[('raccolta_session_id','!=',False)]"/>
+                            domain="[('raccolta_session_id','!=',False)]"
+                            help="Ordini creati tramite app raccolta"/>
                     
                     <filter string="Creati Offline" name="offline_created"
-                            domain="[('is_offline_order','=',True)]"/>
+                            domain="[('is_offline_order','=',True)]"
+                            help="Ordini creati in modalità offline"/>
 
                     <filter string="Non Sincronizzati" name="not_synced"
-                            domain="[('synced_to_odoo','=',False)]"/>
+                            domain="[('synced_to_odoo','=',False)]"
+                            help="Ordini non ancora sincronizzati"/>
 
                     <filter string="Sincronizzati" name="synced"
-                            domain="[('synced_to_odoo','=',True)]"/>
+                            domain="[('synced_to_odoo','=',True)]"
+                            help="Ordini già sincronizzati"/>
+
+                    <filter string="Con DDT" name="with_ddt"
+                            domain="[('ddt_count','>',0)]"
+                            help="Ordini con DDT collegati"/>
+
+                    <filter string="Ricevuta Stampata" name="receipt_printed"
+                            domain="[('receipt_printed','=',True)]"
+                            help="Ordini con ricevuta già stampata"/>
 
                     <separator/>
 
+                    <!-- Filtri per data -->
+                    <filter string="Creati Oggi" name="created_today"
+                            domain="[('create_date','&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+
+                    <filter string="Offline Oggi" name="offline_today"
+                            domain="[('offline_created_at','&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+
+                    <separator/>
+
+                    <!-- Raggruppamenti -->
                     <group expand="0" string="Raggruppa per Raccolta">
                         <filter string="Sessione" name="group_by_session"
                                 context="{'group_by':'raccolta_session_id'}"/>
                         <filter string="Agente" name="group_by_agent"
                                 context="{'group_by':'agent_code'}"/>
-                        <filter string="Stato Sync" name="group_by_sync_status"
+                        <filter string="Stato Sincronizzazione" name="group_by_sync_status"
                                 context="{'group_by':'synced_to_odoo'}"/>
+                        <filter string="Formato Ricevuta" name="group_by_receipt_format"
+                                context="{'group_by':'receipt_format'}"/>
+                        <filter string="Data Creazione Offline" name="group_by_offline_date"
+                                context="{'group_by':'offline_created_at:day'}"/>
                     </group>
                 </xpath>
 
+            </field>
+        </record>
+
+        <!-- ================================= -->
+        <!-- VISTA SPECIFICA ORDINI RACCOLTA   -->
+        <!-- ================================= -->
+
+        <record id="view_raccolta_orders_tree" model="ir.ui.view">
+            <field name="name">raccolta.orders.tree</field>
+            <field name="model">sale.order</field>
+            <field name="arch" type="xml">
+                <tree string="Ordini Raccolta" 
+                      decoration-success="synced_to_odoo == True" 
+                      decoration-warning="synced_to_odoo == False"
+                      decoration-muted="state == 'cancel'">
+                    
+                    <field name="name"/>
+                    <field name="partner_id"/>
+                    <field name="raccolta_session_id"/>
+                    <field name="agent_code"/>
+                    <field name="date_order"/>
+                    <field name="offline_created_at"/>
+                    <field name="amount_total"/>
+                    <field name="state" widget="badge"/>
+                    <field name="synced_to_odoo" widget="boolean"/>
+                    <field name="receipt_printed" widget="boolean"/>
+                    <field name="ddt_count"/>
+                    
+                    <!-- Bottoni azione -->
+                    <button name="print_receipt" type="object" icon="fa-print" 
+                            title="Stampa Ricevuta 48mm" context="{'format': '48mm'}"/>
+                    <button name="print_receipt" type="object" icon="fa-receipt" 
+                            title="Stampa Ricevuta 80mm" context="{'format': '80mm'}"/>
+                    <button name="sync_to_odoo" type="object" icon="fa-sync" 
+                            title="Sincronizza"
+                            attrs="{'invisible': [('synced_to_odoo', '=', True)]}"/>
+                    <button name="action_view_ddt" type="object" icon="fa-truck" 
+                            title="Visualizza DDT"
+                            attrs="{'invisible': [('ddt_count', '=', 0)]}"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- ================================= -->
+        <!-- FORM SEMPLIFICATA RACCOLTA        -->
+        <!-- ================================= -->
+
+        <record id="view_raccolta_order_form_simple" model="ir.ui.view">
+            <field name="name">raccolta.order.form.simple</field>
+            <field name="model">sale.order</field>
+            <field name="arch" type="xml">
+                <form string="Ordine Raccolta">
+                    <header>
+                        <button name="action_confirm" string="Conferma" 
+                                type="object" class="btn-primary"
+                                attrs="{'invisible': [('state', '!=', 'draft')]}"/>
+                        <button name="print_receipt" string="Stampa Ricevuta" 
+                                type="object" class="btn-info" 
+                                context="{'format': '48mm'}"/>
+                        <button name="sync_to_odoo" string="Sincronizza" 
+                                type="object" class="btn-warning"
+                                attrs="{'invisible': [('synced_to_odoo', '=', True)]}"/>
+                        <field name="state" widget="statusbar"/>
+                    </header>
+                    
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" readonly="1"/>
+                            </h1>
+                        </div>
+
+                        <group>
+                            <group>
+                                <field name="partner_id" readonly="1"/>
+                                <field name="raccolta_session_id" readonly="1"/>
+                                <field name="agent_code" readonly="1"/>
+                            </group>
+                            <group>
+                                <field name="date_order" readonly="1"/>
+                                <field name="offline_created_at" readonly="1"/>
+                                <field name="synced_to_odoo" readonly="1"/>
+                                <field name="amount_total" readonly="1"/>
+                            </group>
+                        </group>
+
+                        <notebook>
+                            <page string="Righe Ordine">
+                                <field name="order_line" readonly="1">
+                                    <tree>
+                                        <field name="product_id"/>
+                                        <field name="name"/>
+                                        <field name="product_uom_qty"/>
+                                        <field name="price_unit"/>
+                                        <field name="price_subtotal"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            <page string="Note">
+                                <group>
+                                    <field name="general_notes" widget="text"/>
+                                    <field name="delivery_instructions" widget="text"/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
             </field>
         </record>
 
@@ -155,17 +363,35 @@
             <field name="name">Ordini Raccolta</field>
             <field name="res_model">sale.order</field>
             <field name="view_mode">tree,form</field>
+            <field name="view_id" ref="view_raccolta_orders_tree"/>
             <field name="domain">[('raccolta_session_id', '!=', False)]</field>
-            <field name="context">{'search_default_raccolta_orders': 1}</field>
+            <field name="context">{
+                'search_default_raccolta_orders': 1,
+                'default_is_offline_order': True
+            }</field>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
                     Nessun ordine raccolta trovato!
                 </p>
                 <p>
                     Gli ordini raccolta vengono creati tramite l'app mobile
-                    dagli agenti sul territorio.
+                    dagli agenti sul territorio. Qui puoi visualizzare, sincronizzare
+                    e stampare ricevute per tutti gli ordini raccolti.
+                </p>
+                <p>
+                    <b>Suggerimento:</b> Utilizza i filtri per trovare ordini non sincronizzati
+                    o raggruppare per agente.
                 </p>
             </field>
+        </record>
+
+        <!-- Action alternativa con vista standard -->
+        <record id="action_raccolta_orders_standard" model="ir.actions.act_window">
+            <field name="name">Ordini Raccolta (Vista Standard)</field>
+            <field name="res_model">sale.order</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('raccolta_session_id', '!=', False)]</field>
+            <field name="context">{'search_default_raccolta_orders': 1}</field>
         </record>
 
     </data>

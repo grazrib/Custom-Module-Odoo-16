@@ -3,7 +3,7 @@
     <data>
 
         <!-- ================================= -->
-        <!-- VISTA FORM UTENTI ESTESA          -->
+        <!-- ESTENSIONE FORM UTENTI            -->
         <!-- ================================= -->
 
         <record id="view_users_form_raccolta" model="ir.ui.view">
@@ -12,57 +12,75 @@
             <field name="inherit_id" ref="base.view_users_form"/>
             <field name="arch" type="xml">
 
-                <!-- Aggiungi tab Raccolta Ordini -->
+                <!-- Aggiungi pagina Raccolta Ordini -->
                 <xpath expr="//notebook" position="inside">
-                    <page string="Raccolta Ordini" name="raccolta_ordini">
+                    <page string="Raccolta Ordini" name="raccolta_ordini" 
+                          attrs="{'invisible': [('is_raccolta_agent', '=', False)]}">
                         
-                        <!-- Configurazione Base Agente -->
                         <group string="Configurazione Agente">
-                            <field name="is_raccolta_agent"/>
-                            <field name="agent_code" 
-                                   attrs="{'invisible': [('is_raccolta_agent', '=', False)],
-                                           'required': [('is_raccolta_agent', '=', True)]}"/>
+                            <group>
+                                <field name="is_raccolta_agent"/>
+                                <field name="agent_code" attrs="{'required': [('is_raccolta_agent', '=', True)]}"/>
+                            </group>
+                            <group>
+                                <field name="max_offline_orders"/>
+                                <field name="offline_data_expiry_days"/>
+                                <field name="auto_sync_enabled"/>
+                            </group>
                         </group>
 
-                        <!-- Configurazione Offline -->
-                        <group string="Configurazione Offline" 
-                               attrs="{'invisible': [('is_raccolta_agent', '=', False)]}">
-                            <field name="max_offline_orders"/>
-                            <field name="offline_data_expiry_days"/>
-                            <field name="auto_sync_enabled"/>
-                        </group>
-
-                        <!-- Sequenze Personalizzate -->
                         <group string="Sequenze Personalizzate" 
                                attrs="{'invisible': [('is_raccolta_agent', '=', False)]}">
-                            <field name="order_sequence_id" readonly="1"/>
-                            <field name="ddt_sequence_id" readonly="1"/>
-                            <field name="picking_sequence_id" readonly="1"/>
+                            <group>
+                                <field name="order_sequence_id" readonly="1"/>
+                                <field name="ddt_sequence_id" readonly="1"/>
+                                <field name="picking_sequence_id" readonly="1"/>
+                            </group>
+                            <group>
+                                <button name="action_setup_sequences" string="Crea Sequenze" 
+                                        type="object" class="btn-primary"
+                                        attrs="{'invisible': [('order_sequence_id', '!=', False)]}"/>
+                                <button name="reset_sequences" string="Reset Sequenze" 
+                                        type="object" class="btn-warning"
+                                        attrs="{'invisible': [('order_sequence_id', '=', False)]}"/>
+                            </group>
                         </group>
 
-                        <!-- Statistiche -->
-                        <group string="Statistiche" 
+                        <group string="Statistiche Offline" 
                                attrs="{'invisible': [('is_raccolta_agent', '=', False)]}">
-                            <field name="total_offline_orders" readonly="1"/>
-                            <field name="pending_sync_count" readonly="1"/>
-                            <field name="last_sync_date" readonly="1"/>
+                            <group>
+                                <field name="total_offline_orders" readonly="1"/>
+                                <field name="pending_sync_count" readonly="1"/>
+                            </group>
+                            <group>
+                                <field name="last_sync_date" readonly="1"/>
+                                <field name="last_activity_date" readonly="1"/>
+                            </group>
                         </group>
 
-                        <!-- Azioni Agente -->
-                        <div class="mt16" attrs="{'invisible': [('is_raccolta_agent', '=', False)]}">
-                            <button name="action_setup_sequences" type="object"
-                                    string="Configura Sequenze" class="btn-primary"
-                                    attrs="{'invisible': [('order_sequence_id', '!=', False)]}"/>
-                        </div>
-
+                        <group string="Azioni Agente" 
+                               attrs="{'invisible': [('is_raccolta_agent', '=', False)]}">
+                            <button name="action_view_orders" string="Visualizza Ordini" 
+                                    type="object" class="btn-info"/>
+                            <button name="sync_offline_orders" string="Sincronizza Ordini" 
+                                    type="object" class="btn-success"
+                                    attrs="{'invisible': [('pending_sync_count', '=', 0)]}"/>
+                        </group>
+                        
                     </page>
+                </xpath>
+
+                <!-- Aggiungi campo agente nel form principale -->
+                <xpath expr="//field[@name='groups_id']" position="before">
+                    <field name="is_raccolta_agent"/>
+                    <field name="agent_code" attrs="{'invisible': [('is_raccolta_agent', '=', False)]}"/>
                 </xpath>
 
             </field>
         </record>
 
         <!-- ================================= -->
-        <!-- VISTA TREE UTENTI ESTESA          -->
+        <!-- ESTENSIONE TREE UTENTI            -->  
         <!-- ================================= -->
 
         <record id="view_users_tree_raccolta" model="ir.ui.view">
@@ -71,56 +89,53 @@
             <field name="inherit_id" ref="base.view_users_tree"/>
             <field name="arch" type="xml">
 
-                <!-- Aggiungi colonne raccolta ordini -->
+                <!-- Aggiungi colonne agente -->
+                <xpath expr="//tree" position="attributes">
+                    <attribute name="decoration-info">is_raccolta_agent == True</attribute>
+                </xpath>
+
                 <xpath expr="//field[@name='login_date']" position="after">
-                    <field name="is_raccolta_agent"/>
-                    <field name="agent_code"/>
-                    <field name="total_offline_orders" sum="Totale Ordini"/>
-                    <field name="pending_sync_count" sum="Totale da Sincronizzare"/>
+                    <field name="is_raccolta_agent" string="Agente" widget="boolean"/>
+                    <field name="agent_code" string="Codice" 
+                           attrs="{'invisible': [('is_raccolta_agent', '=', False)]}"/>
+                    <field name="pending_sync_count" string="Da Sync" 
+                           attrs="{'invisible': [('is_raccolta_agent', '=', False)]}"/>
                 </xpath>
 
             </field>
         </record>
 
         <!-- ================================= -->
-        <!-- VISTA SEARCH DEDICATA AGENTI      -->
+        <!-- ESTENSIONE SEARCH UTENTI          -->
         <!-- ================================= -->
 
-        <record id="view_raccolta_agents_search" model="ir.ui.view">
-            <field name="name">res.users.search.raccolta.agents</field>
+        <record id="view_users_search_raccolta" model="ir.ui.view">
+            <field name="name">res.users.search.raccolta</field>
             <field name="model">res.users</field>
+            <field name="inherit_id" ref="base.view_users_search"/>
             <field name="arch" type="xml">
-                <search string="Cerca Agenti Raccolta">
-                    
-                    <!-- Campi ricerca -->
-                    <field name="name" string="Nome"
-                           filter_domain="[('name','ilike',self)]"/>
-                    <field name="login" string="Login"/>
-                    <field name="agent_code" string="Codice Agente"/>
-                    
+
+                <!-- Aggiungi filtri agenti -->
+                <xpath expr="//search" position="inside">
                     <separator/>
                     
-                    <!-- Filtri solo su campi stored/ricercabili -->
-                    <filter string="Agenti Attivi" name="active_agents"
-                            domain="[('is_raccolta_agent','=',True),('active','=',True)]"/>
+                    <filter string="Agenti Raccolta" name="raccolta_agents"
+                            domain="[('is_raccolta_agent','=',True)]"/>
                     
-                    <filter string="Con Sequenze" name="with_sequences"
-                            domain="[('order_sequence_id','!=',False)]"/>
+                    <filter string="Con Ordini Pendenti" name="with_pending_orders"
+                            domain="[('pending_sync_count','>',0)]"/>
 
-                    <filter string="Auto-Sync Abilitato" name="auto_sync_enabled"
-                            domain="[('auto_sync_enabled','=',True)]"/>
+                    <filter string="Attivi" name="active_agents"
+                            domain="[('is_raccolta_agent','=',True), ('active','=',True)]"/>
 
                     <separator/>
 
-                    <!-- Raggruppamenti -->
-                    <group expand="0" string="Raggruppa per">
-                        <filter string="Stato Agente" name="group_by_agent_status"
+                    <group expand="0" string="Raggruppa per Raccolta">
+                        <filter string="Tipo Utente" name="group_by_agent_type"
                                 context="{'group_by':'is_raccolta_agent'}"/>
-                        <filter string="Azienda" name="group_by_company"
-                                context="{'group_by':'company_id'}"/>
                     </group>
+                </xpath>
 
-                </search>
             </field>
         </record>
 
@@ -129,21 +144,58 @@
         <!-- ================================= -->
 
         <record id="action_raccolta_agents" model="ir.actions.act_window">
-            <field name="name">Agenti Raccolta Ordini</field>
+            <field name="name">Agenti Raccolta</field>
             <field name="res_model">res.users</field>
             <field name="view_mode">tree,form</field>
             <field name="domain">[('is_raccolta_agent', '=', True)]</field>
-            <field name="search_view_id" ref="view_raccolta_agents_search"/>
-            <field name="context">{'search_default_active_agents': 1}</field>
+            <field name="context">{'search_default_raccolta_agents': 1, 'search_default_active_agents': 1}</field>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
-                    Configura il primo agente per la raccolta ordini
+                    Nessun agente raccolta configurato!
                 </p>
                 <p>
-                    Gli agenti raccolta ordini possono utilizzare l'app mobile
-                    per creare ordini offline con numerazione personalizzata.
+                    Gli agenti raccolta sono utenti abilitati a utilizzare l'app mobile
+                    per la raccolta ordini offline. Ogni agente ha sequenze personalizzate
+                    e può sincronizzare i propri ordini.
                 </p>
             </field>
+        </record>
+
+        <!-- ================================= -->
+        <!-- VISTA SEMPLIFICATA AGENTI         -->
+        <!-- ================================= -->
+
+        <record id="view_raccolta_agents_tree" model="ir.ui.view">
+            <field name="name">raccolta.agents.tree</field>
+            <field name="model">res.users</field>
+            <field name="arch" type="xml">
+                <tree string="Agenti Raccolta" decoration-warning="pending_sync_count > 0">
+                    <field name="name"/>
+                    <field name="login"/>
+                    <field name="agent_code"/>
+                    <field name="total_offline_orders"/>
+                    <field name="pending_sync_count"/>
+                    <field name="last_sync_date"/>
+                    <field name="active" widget="boolean"/>
+                    
+                    <button name="action_setup_sequences" type="object" icon="fa-cogs" 
+                            title="Setup Sequenze"
+                            attrs="{'invisible': [('order_sequence_id', '!=', False)]}"/>
+                    <button name="sync_offline_orders" type="object" icon="fa-sync" 
+                            title="Sincronizza Ordini"
+                            attrs="{'invisible': [('pending_sync_count', '=', 0)]}"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Action per vista semplificata -->
+        <record id="action_raccolta_agents_simple" model="ir.actions.act_window">
+            <field name="name">Gestione Agenti</field>
+            <field name="res_model">res.users</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_id" ref="view_raccolta_agents_tree"/>
+            <field name="domain">[('is_raccolta_agent', '=', True)]</field>
+            <field name="context">{'search_default_active_agents': 1}</field>
         </record>
 
     </data>

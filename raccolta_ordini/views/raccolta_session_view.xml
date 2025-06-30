@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-
         <!-- ================================= -->
         <!-- SESSIONE RACCOLTA: FORM           -->
         <!-- ================================= -->
@@ -12,41 +11,71 @@
             <field name="arch" type="xml">
                 <form string="Sessione Raccolta Ordini">
                     <header>
-                        <!-- Actions based on state -->
-                        <button name="action_open" type="object"
-                                string="Apri Sessione" class="btn-primary"
+                        <button name="action_open" string="Apri Sessione" 
+                                type="object" class="btn-primary"
                                 attrs="{'invisible': [('state', '!=', 'opening_control')]}"/>
-
-                        <button name="action_close" type="object"
-                                string="Chiudi Sessione" class="btn-secondary"
+                        <button name="action_close" string="Chiudi Sessione" 
+                                type="object" class="btn-secondary"
+                                attrs="{'invisible': [('state', '!=', 'opened')]}"/>
+                        <button name="action_force_close" string="Forza Chiusura" 
+                                type="object" class="btn-warning"
                                 attrs="{'invisible': [('state', 'not in', ['opened', 'closing_control'])]}"/>
-
-                        <!-- State field -->
-                        <field name="state" widget="statusbar"
-                               statusbar_visible="opening_control,opened,closing_control,closed"/>
+                        <button name="sync_all_orders" string="Sincronizza Tutto" 
+                                type="object" class="btn-info"
+                                attrs="{'invisible': [('pending_order_count', '=', 0)]}"/>
+                        <field name="state" widget="statusbar" statusbar_visible="opening_control,opened,closed"/>
                     </header>
-
+                    
                     <sheet>
-                        <!-- Titolo -->
                         <div class="oe_title">
                             <h1>
-                                <field name="name" placeholder="Nome sessione..."/>
+                                <field name="display_name" readonly="1"/>
                             </h1>
                         </div>
 
                         <group>
-                            <group string="Informazioni Base">
-                                <field name="config_id" options="{'no_create': True}"/>
-                                <field name="user_id" options="{'no_create': True}"/>
-                                <field name="start_at"/>
-                                <field name="stop_at" attrs="{'invisible': [('state', '!=', 'closed')]}"/>
+                            <group>
+                                <field name="name"/>
+                                <field name="config_id"/>
+                                <field name="user_id"/>
+                                <field name="company_id"/>
                             </group>
-
-                            <group string="Stato">
-                                <field name="state"/>
-                                <field name="last_online" attrs="{'invisible': [('state', '=', 'closed')]}"/>
+                            <group>
+                                <field name="start_at"/>
+                                <field name="stop_at" attrs="{'invisible': [('stop_at', '=', False)]}"/>
+                                <field name="duration" attrs="{'invisible': [('duration', '=', 0)]}"/>
+                                <field name="is_online"/>
+                                <field name="last_online"/>
                             </group>
                         </group>
+
+                        <group string="Statistiche Ordini">
+                            <group>
+                                <field name="order_count"/>
+                                <field name="synced_order_count"/>
+                                <field name="pending_order_count"/>
+                            </group>
+                            <group>
+                                <field name="total_amount"/>
+                                <field name="currency_id" invisible="1"/>
+                                <field name="sync_status"/>
+                            </group>
+                        </group>
+
+                        <notebook>
+                            <page string="Ordini" name="orders">
+                                <field name="order_ids" readonly="1">
+                                    <tree>
+                                        <field name="name"/>
+                                        <field name="partner_id"/>
+                                        <field name="date_order"/>
+                                        <field name="amount_total"/>
+                                        <field name="state"/>
+                                        <field name="synced_to_odoo" widget="boolean"/>
+                                    </tree>
+                                </field>
+                            </page>
+                        </notebook>
                     </sheet>
                 </form>
             </field>
@@ -60,89 +89,25 @@
             <field name="name">raccolta.session.tree</field>
             <field name="model">raccolta.session</field>
             <field name="arch" type="xml">
-                <tree string="Sessioni Raccolta Ordini"
-                      decoration-info="state == 'opening_control'"
-                      decoration-success="state == 'opened'"
-                      decoration-danger="state == 'closed'">
+                <tree string="Sessioni Raccolta Ordini" decoration-success="state=='opened'" decoration-muted="state=='closed'">
                     <field name="name"/>
-                    <field name="config_id"/>
                     <field name="user_id"/>
+                    <field name="config_id"/>
                     <field name="start_at"/>
-                    <field name="stop_at"/>
-                    <field name="state"/>
-
-                    <button name="action_open" type="object"
-                            icon="fa-play" title="Apri Sessione"
+                    <field name="duration"/>
+                    <field name="order_count"/>
+                    <field name="pending_order_count"/>
+                    <field name="total_amount"/>
+                    <field name="state" widget="badge"/>
+                    <field name="sync_status" widget="badge"/>
+                    
+                    <button name="action_open" type="object" icon="fa-play" 
+                            title="Apri Sessione"
                             attrs="{'invisible': [('state', '!=', 'opening_control')]}"/>
-
-                    <button name="action_close" type="object"
-                            icon="fa-stop" title="Chiudi Sessione"
-                            attrs="{'invisible': [('state', 'not in', ['opened'])]}"/>
+                    <button name="action_close" type="object" icon="fa-stop" 
+                            title="Chiudi Sessione"
+                            attrs="{'invisible': [('state', '!=', 'opened')]}"/>
                 </tree>
-            </field>
-        </record>
-
-        <!-- ================================= -->
-        <!-- SESSIONE RACCOLTA: KANBAN         -->
-        <!-- ================================= -->
-
-        <record id="view_raccolta_session_kanban" model="ir.ui.view">
-            <field name="name">raccolta.session.kanban</field>
-            <field name="model">raccolta.session</field>
-            <field name="arch" type="xml">
-                <kanban class="o_kanban_mobile">
-                    <field name="name"/>
-                    <field name="config_id"/>
-                    <field name="user_id"/>
-                    <field name="state"/>
-                    <field name="start_at"/>
-
-                    <templates>
-                        <t t-name="kanban-box">
-                            <div class="oe_kanban_card oe_kanban_global_click">
-                                <div class="oe_kanban_content">
-                                    <!-- Header -->
-                                    <div class="oe_kanban_card_header">
-                                        <div class="oe_kanban_card_header_title">
-                                            <div class="o_kanban_record_title">
-                                                <field name="name"/>
-                                            </div>
-                                            <div class="o_kanban_record_subtitle">
-                                                <field name="config_id"/>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Body -->
-                                    <div class="oe_kanban_card_content">
-                                        <div class="o_kanban_record_bottom">
-                                            <div class="oe_kanban_bottom_left">
-                                                <span class="badge badge-pill"
-                                                      t-attf-class="badge-{{record.state.raw_value == 'opened' ? 'success' : (record.state.raw_value == 'closed' ? 'secondary' : 'info')}}">
-                                                    <field name="state"/>
-                                                </span>
-                                            </div>
-
-                                            <div class="oe_kanban_bottom_right">
-                                                <button name="action_open" type="object"
-                                                        class="btn btn-primary btn-sm"
-                                                        t-if="record.state.raw_value == 'opening_control'">
-                                                    <i class="fa fa-play"/> Apri
-                                                </button>
-
-                                                <button name="action_close" type="object"
-                                                        class="btn btn-secondary btn-sm"
-                                                        t-if="record.state.raw_value == 'opened'">
-                                                    <i class="fa fa-stop"/> Chiudi
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </t>
-                    </templates>
-                </kanban>
             </field>
         </record>
 
@@ -155,70 +120,51 @@
             <field name="model">raccolta.session</field>
             <field name="arch" type="xml">
                 <search string="Cerca Sessioni">
-                    <!-- Campi ricerca -->
-                    <field name="name" string="Nome"
-                           filter_domain="[('name','ilike',self)]"/>
+                    <field name="name" string="Nome" filter_domain="[('name','ilike',self)]"/>
                     <field name="user_id" string="Agente"/>
                     <field name="config_id" string="Configurazione"/>
 
-                    <!-- Separatore -->
                     <separator/>
 
-                    <!-- Filtri predefiniti -->
-                    <filter string="Aperte" name="opened"
-                            domain="[('state','=','opened')]"
-                            help="Sessioni aperte"/>
-
-                    <filter string="Chiuse" name="closed"
-                            domain="[('state','=','closed')]"
-                            help="Sessioni chiuse"/>
-
-                    <filter string="Mie Sessioni" name="my_sessions"
-                            domain="[('user_id','=',uid)]"
-                            help="Le mie sessioni"/>
+                    <filter string="Aperte" name="opened" domain="[('state','=','opened')]"/>
+                    <filter string="Chiuse" name="closed" domain="[('state','=','closed')]"/>
+                    <filter string="Mie Sessioni" name="my_sessions" domain="[('user_id','=',uid)]"/>
 
                     <separator/>
 
-                    <!-- Filtri per data -->
-                    <filter string="Oggi" name="today"
+                    <filter string="Oggi" name="today" 
                             domain="[('start_at','&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
-
-                    <filter string="Questa Settimana" name="this_week"
-                            domain="[('start_at','&gt;=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                    <filter string="Questa Settimana" name="this_week" 
+                            domain="[('start_at','&gt;=', (context_today() - datetime.timedelta(days=context_today().weekday())).strftime('%Y-%m-%d'))]"/>
 
                     <separator/>
 
-                    <!-- Raggruppamenti -->
                     <group expand="0" string="Raggruppa per">
-                        <filter string="Agente" name="group_user"
-                                context="{'group_by':'user_id'}"/>
-                        <filter string="Configurazione" name="group_config"
-                                context="{'group_by':'config_id'}"/>
-                        <filter string="Stato" name="group_state"
-                                context="{'group_by':'state'}"/>
-                        <filter string="Data Apertura" name="group_start_date"
-                                context="{'group_by':'start_at:day'}"/>
+                        <filter string="Agente" name="group_user" context="{'group_by':'user_id'}"/>
+                        <filter string="Configurazione" name="group_config" context="{'group_by':'config_id'}"/>
+                        <filter string="Stato" name="group_state" context="{'group_by':'state'}"/>
+                        <filter string="Data" name="group_date" context="{'group_by':'start_at:day'}"/>
                     </group>
                 </search>
             </field>
         </record>
 
         <!-- ================================= -->
-        <!-- AZIONI                            -->
+        <!-- ACTION SESSIONI RACCOLTA          -->
         <!-- ================================= -->
 
         <record id="action_raccolta_session" model="ir.actions.act_window">
             <field name="name">Sessioni Raccolta</field>
             <field name="res_model">raccolta.session</field>
-            <field name="view_mode">kanban,tree,form</field>
+            <field name="view_mode">tree,form</field>
             <field name="context">{'search_default_my_sessions': 1}</field>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
                     Nessuna sessione raccolta trovata!
                 </p>
                 <p>
-                    Le sessioni vengono create automaticamente quando si apre
-                    l'applicazione di raccolta ordini.
+                    Le sessioni di raccolta gestiscono il ciclo di vita della raccolta ordini offline.
+                    Ogni agente può avere una sessione aperta alla volta per ogni configurazione.
                 </p>
             </field>
         </record>

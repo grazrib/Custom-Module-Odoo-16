@@ -1,154 +1,147 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- ================================= -->
-    <!-- VISTA FORM PICKING ESTESA         -->
-    <!-- ================================= -->
+    <data>
 
-    <record id="view_picking_form_raccolta" model="ir.ui.view">
-        <field name="name">stock.picking.form.raccolta</field>
-        <field name="model">stock.picking</field>
-        <field name="inherit_id" ref="stock.view_picking_form"/>
-        <field name="arch" type="xml">
+        <!-- ================================= -->
+        <!-- ESTENSIONE FORM PICKING           -->
+        <!-- ================================= -->
 
-            <!-- Ribbon per picking raccolta -->
-            <xpath expr="//form" position="inside">
-                <widget name="web_ribbon" title="Raccolta Ordini" bg_color="bg-info"
-                        attrs="{'invisible': [('raccolta_session_id', '=', False)]}"/>
-            </xpath>
+        <record id="view_picking_form_raccolta" model="ir.ui.view">
+            <field name="name">stock.picking.form.raccolta</field>
+            <field name="model">stock.picking</field>
+            <field name="inherit_id" ref="stock.view_picking_form"/>
+            <field name="arch" type="xml">
 
-            <!-- Tab informazioni raccolta -->
-            <xpath expr="//notebook" position="inside">
-                <page string="Raccolta Ordini" name="raccolta_info"
-                      attrs="{'invisible': [('raccolta_session_id', '=', False)]}">
-
-                    <group>
-                        <group string="Informazioni Sessione">
+                <!-- Aggiungi campi raccolta nel form -->
+                <xpath expr="//sheet//group[1]" position="after">
+                    <group string="Raccolta Ordini" attrs="{'invisible': [('raccolta_session_id', '=', False)]}">
+                        <group>
                             <field name="raccolta_session_id" readonly="1"/>
                             <field name="agent_code" readonly="1"/>
-                            <field name="is_offline_picking" readonly="1"/>
-                            <field name="synced_to_odoo" readonly="1"/>
+                            <field name="is_offline_picking"/>
                         </group>
-
-                        <group string="Timestamp">
-                            <field name="offline_created_at" readonly="1"/>
-                            <field name="sync_at" readonly="1"/>
+                        <group>
+                            <field name="synced_to_odoo"/>
+                            <field name="offline_created_at" attrs="{'invisible': [('offline_created_at', '=', False)]}"/>
+                            <field name="sync_at" attrs="{'invisible': [('sync_at', '=', False)]}"/>
                         </group>
                     </group>
+                </xpath>
 
-                    <!-- Configurazione DDT -->
-                    <group>
-                        <group string="DDT Automatico">
+                <!-- Aggiungi campi DDT automatico -->
+                <xpath expr="//sheet//group[last()]" position="after">
+                    <group string="DDT Automatico" attrs="{'invisible': [('raccolta_session_id', '=', False)]}">
+                        <group>
                             <field name="auto_create_ddt"/>
                             <field name="ddt_created" readonly="1"/>
+                            <field name="ddt_count" readonly="1"/>
+                        </group>
+                        <group>
+                            <button name="action_create_ddt_manual" string="Crea DDT Manualmente" 
+                                    type="object" class="btn-primary"
+                                    attrs="{'invisible': ['|', ('ddt_created', '=', True), ('state', '!=', 'done')]}"/>
+                            <button name="action_view_ddt" string="Visualizza DDT" 
+                                    type="object" class="btn-secondary"
+                                    attrs="{'invisible': [('ddt_count', '=', 0)]}"/>
                         </group>
                     </group>
+                </xpath>
 
-                    <!-- Azioni -->
-                    <div class="oe_clear">
-                        <group>
-                            <button name="action_create_ddt_manual" type="object"
-                                    string="Crea DDT Manualmente" class="btn-primary"
-                                    attrs="{'invisible': ['|', ('raccolta_session_id', '=', False), ('ddt_created', '=', True)]}"/>
-                        </group>
-                    </div>
+            </field>
+        </record>
 
-                </page>
-            </xpath>
+        <!-- ================================= -->
+        <!-- ESTENSIONE TREE PICKING           -->
+        <!-- ================================= -->
 
-        </field>
-    </record>
+        <record id="view_picking_tree_raccolta" model="ir.ui.view">
+            <field name="name">stock.picking.tree.raccolta</field>
+            <field name="model">stock.picking</field>
+            <field name="inherit_id" ref="stock.view_picking_tree"/>
+            <field name="arch" type="xml">
 
-    <!-- ================================= -->
-    <!-- VISTA TREE PICKING ESTESA         -->
-    <!-- ================================= -->
+                <!-- Aggiungi colonne raccolta -->
+                <xpath expr="//tree" position="attributes">
+                    <attribute name="decoration-info">raccolta_session_id != False</attribute>
+                </xpath>
 
-    <record id="view_picking_tree_raccolta" model="ir.ui.view">
-        <field name="name">stock.picking.tree.raccolta</field>
-        <field name="model">stock.picking</field>
-        <field name="inherit_id" ref="stock.vpicktree"/>
-        <field name="arch" type="xml">
+                <xpath expr="//field[@name='state']" position="after">
+                    <field name="agent_code" string="Agente" 
+                           attrs="{'invisible': [('raccolta_session_id', '=', False)]}"/>
+                    <field name="synced_to_odoo" string="Sync" widget="boolean"
+                           attrs="{'invisible': [('raccolta_session_id', '=', False)]}"/>
+                    <field name="ddt_count" string="DDT"
+                           attrs="{'invisible': [('raccolta_session_id', '=', False)]}"/>
+                    <field name="raccolta_session_id" invisible="1"/>
+                </xpath>
 
-            <!-- Aggiungi colonne raccolta -->
-            <xpath expr="//field[@name='name']" position="after">
-                <field name="raccolta_session_id" string="Sessione" optional="show"/>
-                <field name="agent_code" string="Agente" optional="show"/>
-                <field name="is_offline_picking" string="Offline" widget="boolean" optional="show"/>
-                <field name="synced_to_odoo" string="Sincronizzato" widget="boolean" optional="show"/>
-            </xpath>
+            </field>
+        </record>
 
-        </field>
-    </record>
+        <!-- ================================= -->
+        <!-- ESTENSIONE SEARCH PICKING         -->
+        <!-- ================================= -->
 
-    <!-- ================================= -->
-    <!-- VISTA SEARCH PICKING ESTESA       -->
-    <!-- ================================= -->
+        <record id="view_picking_search_raccolta" model="ir.ui.view">
+            <field name="name">stock.picking.search.raccolta</field>
+            <field name="model">stock.picking</field>
+            <field name="inherit_id" ref="stock.view_picking_internal_search"/>
+            <field name="arch" type="xml">
 
-    <record id="view_picking_search_raccolta" model="ir.ui.view">
-        <field name="name">stock.picking.search.raccolta</field>
-        <field name="model">stock.picking</field>
-        <field name="inherit_id" ref="stock.view_picking_internal_search"/>
-        <field name="arch" type="xml">
+                <!-- Aggiungi filtri raccolta -->
+                <xpath expr="//search" position="inside">
+                    <separator/>
+                    
+                    <filter string="Picking Raccolta" name="raccolta_pickings"
+                            domain="[('raccolta_session_id','!=',False)]"/>
+                    
+                    <filter string="Creati Offline" name="offline_created"
+                            domain="[('is_offline_picking','=',True)]"/>
 
-            <!-- Filtri raccolta -->
-            <xpath expr="//search" position="inside">
+                    <filter string="Non Sincronizzati" name="not_synced"
+                            domain="[('synced_to_odoo','=',False)]"/>
 
-                <separator/>
+                    <filter string="Con DDT" name="with_ddt"
+                            domain="[('ddt_count','>',0)]"/>
 
-                <filter string="Picking Raccolta" name="raccolta_pickings"
-                        domain="[('raccolta_session_id', '!=', False)]"/>
+                    <filter string="Senza DDT" name="without_ddt"
+                            domain="[('raccolta_session_id','!=',False), ('ddt_count','=',0)]"/>
 
-                <filter string="Creati Offline" name="offline_pickings"
-                        domain="[('is_offline_picking', '=', True)]"/>
+                    <separator/>
 
-                <filter string="Non Sincronizzati" name="not_synced"
-                        domain="[('synced_to_odoo', '=', False)]"/>
+                    <group expand="0" string="Raggruppa per Raccolta">
+                        <filter string="Sessione" name="group_by_session"
+                                context="{'group_by':'raccolta_session_id'}"/>
+                        <filter string="Agente" name="group_by_agent"
+                                context="{'group_by':'agent_code'}"/>
+                        <filter string="Stato Sync" name="group_by_sync"
+                                context="{'group_by':'synced_to_odoo'}"/>
+                    </group>
+                </xpath>
 
-                <filter string="Sincronizzati" name="synced"
-                        domain="[('synced_to_odoo', '=', True)]"/>
+            </field>
+        </record>
 
-                <filter string="Con DDT Creati" name="with_ddt"
-                        domain="[('ddt_created', '=', True)]"/>
+        <!-- ================================= -->
+        <!-- ACTION PICKING RACCOLTA           -->
+        <!-- ================================= -->
 
-                <separator/>
+        <record id="action_picking_raccolta" model="ir.actions.act_window">
+            <field name="name">Picking Raccolta</field>
+            <field name="res_model">stock.picking</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('raccolta_session_id', '!=', False)]</field>
+            <field name="context">{'search_default_raccolta_pickings': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Nessun picking raccolta trovato!
+                </p>
+                <p>
+                    I picking raccolta vengono generati automaticamente dagli ordini
+                    creati tramite l'app mobile dagli agenti.
+                </p>
+            </field>
+        </record>
 
-                <group expand="0" string="Raggruppa per Raccolta">
-                    <filter string="Agente" name="group_agent"
-                            context="{'group_by': 'agent_code'}"/>
-                    <filter string="Sessione" name="group_session"
-                            context="{'group_by': 'raccolta_session_id'}"/>
-                    <filter string="Stato DDT" name="group_ddt_status"
-                            context="{'group_by': 'ddt_created'}"/>
-                </group>
-
-            </xpath>
-
-            <!-- Ricerca per agente -->
-            <xpath expr="//field[@name='name']" position="after">
-                <field name="agent_code" string="Codice Agente"/>
-            </xpath>
-
-        </field>
-    </record>
-
-    <!-- ================================= -->
-    <!-- AZIONI PICKING RACCOLTA          -->
-    <!-- ================================= -->
-
-    <record id="action_picking_raccolta" model="ir.actions.act_window">
-        <field name="name">Picking Raccolta Ordini</field>
-        <field name="res_model">stock.picking</field>
-        <field name="view_mode">tree,form</field>
-        <field name="domain">[('raccolta_session_id', '!=', False)]</field>
-        <field name="context">{'search_default_raccolta_pickings': 1}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">
-                Nessun picking raccolta trovato!
-            </p>
-            <p>
-                I picking raccolta vengono creati automaticamente
-                dagli ordini raccolti dagli agenti.
-            </p>
-        </field>
-    </record>
-
+    </data>
 </odoo>

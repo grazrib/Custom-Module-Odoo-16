@@ -62,14 +62,7 @@ class StockPicking(models.Model):
 		help='Indica se il DDT è stato creato per questo picking'
 	)
 
-	# Campi DDT collegati - usando relazione indiretta
-	ddt_ids = fields.One2many(
-		'stock.delivery.note',
-		'picking_id',
-		string='DDT Collegati',
-		help='DDT generati per questo picking'
-	)
-
+	# Campi DDT collegati - usando relazione standard del modulo DDT
 	ddt_count = fields.Integer(
 		string='Numero DDT',
 		compute='_compute_ddt_count',
@@ -77,11 +70,15 @@ class StockPicking(models.Model):
 	)
 
 	# === COMPUTED FIELDS ===
-	@api.depends('ddt_ids')
+	@api.depends('delivery_note_ids')
 	def _compute_ddt_count(self):
 		"""Calcola numero DDT collegati"""
 		for picking in self:
-			picking.ddt_count = len(picking.ddt_ids)
+			# Usa il campo standard delivery_note_ids se esiste
+			if hasattr(picking, 'delivery_note_ids'):
+				picking.ddt_count = len(picking.delivery_note_ids)
+			else:
+				picking.ddt_count = 0
 
 	# === OVERRIDE METODI ===
 	def button_validate(self):
@@ -238,7 +235,12 @@ class StockPicking(models.Model):
 		"""Visualizza DDT collegati"""
 		self.ensure_one()
 
-		if not self.ddt_ids:
+		# Usa il campo standard se esiste
+		ddt_ids = []
+		if hasattr(self, 'delivery_note_ids'):
+			ddt_ids = self.delivery_note_ids.ids
+
+		if not ddt_ids:
 			return {
 				'type': 'ir.actions.client',
 				'tag': 'display_notification',
@@ -251,7 +253,7 @@ class StockPicking(models.Model):
 
 		# Cerca action DDT appropriata
 		try:
-			action = self.env.ref('l10n_it_delivery_note_base.action_stock_delivery_note_out').read()[0]
+			action = self.env.ref('l10n_it_delivery_note.action_stock_delivery_note_out').read()[0]
 		except:
 			# Fallback se ref non trovata
 			action = {
@@ -261,11 +263,11 @@ class StockPicking(models.Model):
 				'view_mode': 'tree,form',
 			}
 
-		if len(self.ddt_ids) > 1:
-			action['domain'] = [('id', 'in', self.ddt_ids.ids)]
+		if len(ddt_ids) > 1:
+			action['domain'] = [('id', 'in', ddt_ids)]
 		else:
 			action['views'] = [(False, 'form')]
-			action['res_id'] = self.ddt_ids.id
+			action['res_id'] = ddt_ids[0]
 
 		return action
 
